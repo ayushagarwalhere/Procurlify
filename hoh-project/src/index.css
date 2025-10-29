@@ -1,0 +1,21 @@
+@tailwindcss base;
+@tailwindcss components;
+@tailwindcss utilities;
+
+
+@layer base {
+  @font-face {
+    font-family: 'zentry';
+    src: url('/fonts/zentry-regular.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'circular-web';
+    src: url('/fonts/circular-web-book.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'space-grotesk';
+    src: url('/fonts/space-grotesk.woff2') format('woff2');
+  }
+}
