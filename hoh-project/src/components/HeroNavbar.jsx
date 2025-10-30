@@ -6,8 +6,9 @@ const HeroNavbar = () => {
     <div className="absolute h-full w-full bg-black">
       <header className="absolute w-full h-8 bg-gradient-to-r from-[#8e66fe] to-[#f331f0] z-10">
         <h1 className="absolute top-2 left-1/2 -translate-x-1/2 text-white font-serif text-sm">
+          <a href="#about" className="hover:text-gray-300 underline">
           Procurlify Launches Transparent Tender Network across Blockchain
-          Governance - Learn More
+          Governance - Learn More</a>
         </h1>
       </header>
 
