@@ -41,7 +41,7 @@ const Hero = () => {
 
 
   return (
-      <div className='max-h-screen overflow-hidden'>
+      <div className='h-screen overflow-hidden'>
         <div className='relative w-full h-screen bg-black overflow-hidden'>
           <img 
             src='/images/heroimage.png'
@@ -67,18 +67,18 @@ const Hero = () => {
 
           <div className='flex gap-4 mt-16'>
             <img src='/images/check.png' className='w-8'/>
-            <h1 className='text-2xl font-bold'>Faster Bid Evaluation</h1>
+            <h1 className='text-2xl font-bold hover:text-transparent hover:bg-gradient-to-r from-[#8e66fe] to-[#f331f0] hover: '>Faster Bid Evaluation</h1>
           </div>
 
           <div className='flex gap-4 mt-16'>
             <img src='/images/check.png' className='w-8'/>
-            <h1 className='text-2xl font-bold'>Public Transparency & Immutable Trust</h1>
+            <h1 className='text-2xl font-bold'>Public Transparency & mmutable Trust</h1>
           </div>  
 
           <div>
-            <button className='mt-16 ml-[55%] bg-white w-44 h-12 rounded-2xl text-black font-semibold text-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-3'>
+            <button className='mt-16 ml-[55%] bg-white w-48 h-14 rounded-2xl text-black font-semibold text-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-3'>
               <span className='whitespace-nowrap'>GET STARTED</span> 
-              <TiLocationArrow />  
+              <TiLocationArrow size={32} />  
             </button>
           </div>
         </div>

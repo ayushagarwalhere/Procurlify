@@ -3,7 +3,7 @@ import { TiLocationArrow } from 'react-icons/ti'
 
 const About = () => {
   return (
-    <div id="about" className="bg-black text-white w-full">
+    <div id="about" className="bg-black text-white w-full mt-20">
       <div className="relative max-w-6xl mx-auto px-6 py-24">
         <div className="mb-8">
           <h2 className="text-6xl md:text-6xl font-poppins">
