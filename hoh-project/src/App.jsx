@@ -4,6 +4,7 @@ import HeroNavbar from "./components/HeroNavbar.jsx";
 import Hero from "./pages/Hero.jsx";
 import About from "./pages/About.jsx";
 import Role from "./pages/Role.jsx";
+import Departments from "./pages/Departments.jsx";
 
 const Home = () => (
   <div>
@@ -19,6 +20,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/role" element={<Role />} />
+        <Route path="/departments" element={<Departments />} />
       </Routes>
     </Router>
   );
