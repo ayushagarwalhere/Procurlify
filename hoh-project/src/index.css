@@ -18,4 +18,9 @@
     font-family: 'space-grotesk';
     src: url('/fonts/space-grotesk.woff2') format('woff2');
   }
+
+  @font-face {
+    font-family: 'poppins';
+    src: url('/fonts/poppins.woff2') format('woff2');
+  }
 }

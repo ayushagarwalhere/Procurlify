@@ -10,6 +10,7 @@ export default {
         zentry: ['zentry', 'sans-serif'],
         'circular-web': ['circular-web', 'sans-serif'],
         'space-grotesk': ['space-grotesk', 'sans-serif'],
+        'poppins': ['poppins', 'sans-serif']
       },
     },
   },
