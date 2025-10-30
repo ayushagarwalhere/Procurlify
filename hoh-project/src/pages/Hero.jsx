@@ -49,7 +49,7 @@ const Hero = () => {
         </div>
 
 
-        <div className='absolute top-32 left-16 text-white text-7xl font-poppins flex flex-col'>
+        <div className='absolute top-32 left-14 text-white text-7xl font-poppins flex flex-col'>
           <h1>Decentralised Procure<span className='text-black'>ment</span></h1>
           <h1 className='mt-4'>
             Portal For {''}

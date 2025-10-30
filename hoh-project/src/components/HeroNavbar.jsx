@@ -28,7 +28,7 @@ const HeroNavbar = () => {
         </div>
 
         <div className="absolute left-1/2 flex gap-10 h-full items-center italic font-mono text-xl">
-          <h1>Departments</h1>
+          <h1><a href="#departments" className="hover:text-gray-300 underline">Departments</a></h1>
 
           <h1>TenderDetails</h1>
         </div>

@@ -4,9 +4,9 @@ import { TiLocationArrow } from 'react-icons/ti'
 const About = () => {
   return (
     <div id="about" className="bg-black text-white w-full">
-      <div className="relative max-w-6xl mx-auto px-6 py-24">
+      <div className="relative max-w-6xl mx-auto px-6 py-20">
         <div className="mb-8">
-          <h2 className="text-6xl md:text-6xl font-poppins">
+          <h2 className="text-7xl md:text-6xl font-poppins">
             About <span className="bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-transparent bg-clip-text">Procurlify</span>
           </h2>
           <p className="mt-4 text-white/70 max-w-3xl leading-7">
