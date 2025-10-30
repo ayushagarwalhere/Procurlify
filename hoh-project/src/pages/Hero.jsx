@@ -1,5 +1,6 @@
 import React from 'react'
 import { useState, useEffect } from 'react';
+import { TiLocationArrow } from "react-icons/ti";
 
 
 const Hero = () => {
@@ -40,7 +41,7 @@ const Hero = () => {
 
 
   return (
-    <div className='max-h-screen'>
+      <div className='max-h-screen overflow-hidden'>
         <div className='relative w-full h-screen bg-black overflow-hidden'>
           <img 
             src='/images/heroimage.png'
@@ -49,7 +50,7 @@ const Hero = () => {
         </div>
 
 
-        <div className='absolute top-32 left-16 text-white text-7xl font-poppins flex flex-col'>
+        <div className='absolute top-32 left-14 text-white text-7xl font-poppins flex flex-col'>
           <h1>Decentralised Procure<span className='text-black'>ment</span></h1>
           <h1 className='mt-4'>
             Portal For {''}
@@ -58,11 +59,33 @@ const Hero = () => {
             </span>
             <span className='border-r-4 border-[#f331f0] animate-pulse'></span> {/* blinking cursor */}
           </h1>
+    
+          <div className='flex gap-4 mt-16'>
+            <img src='/images/check.png' className='w-8'/>
+            <h1 className='text-2xl font-bold'>Tamper Proof Transactions  </h1>
+          </div>
+
+          <div className='flex gap-4 mt-16'>
+            <img src='/images/check.png' className='w-8'/>
+            <h1 className='text-2xl font-bold'>Faster Bid Evaluation</h1>
+          </div>
+
+          <div className='flex gap-4 mt-16'>
+            <img src='/images/check.png' className='w-8'/>
+            <h1 className='text-2xl font-bold'>Public Transparency & Immutable Trust</h1>
+          </div>  
+
+          <div>
+            <button className='mt-16 ml-[55%] bg-white w-44 h-12 rounded-2xl text-black font-semibold text-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-3'>
+              <span className='whitespace-nowrap'>GET STARTED</span> 
+              <TiLocationArrow />  
+            </button>
+          </div>
         </div>
 
 
-    </div>
-  )
+      </div>
+  ) 
 }
 
 export default Hero
