@@ -12,8 +12,8 @@ const HeroNavbar = () => {
       </header>
 
       <nav
-        className="z-10 flex size-full items-center justify-between bg-black/90 text-white backdrop-blur-lg hover:bg-white hover:text-black
-       absolute top-8 w-11/12 h-16 left-1/2 -translate-x-1/2 rounded-md border-white/10 border-b border-l border-r shadow-lg"
+        className="z-10 flex size-full items-center justify-between bg-black/40 text-white backdrop-blur-2xl backdrop-saturate-150 hover:bg-white/40 hover:text-black
+       absolute top-8 w-11/12 h-16 left-1/2 -translate-x-1/2 rounded-md border-white/20 border shadow-lg shadow-black/5 backdrop-brightness-125"
       >
         <div className="left-5 flex items-center gap-7">
           <img
