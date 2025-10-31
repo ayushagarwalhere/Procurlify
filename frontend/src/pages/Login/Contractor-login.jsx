@@ -77,7 +77,10 @@ const ContractorLogin = () => {
 
         <div className="text-white/70 text-sm text-center mt-6">
           Don't have an account?{" "}
-          <button onClick={() => navigate("/signup")} className="underline">
+          <button
+            onClick={() => navigate("/signup/contractor")}
+            className="underline"
+          >
             Sign up
           </button>
         </div>

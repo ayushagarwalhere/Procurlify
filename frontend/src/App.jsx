@@ -7,6 +7,9 @@ import Role from "./pages/Role.jsx";
 import ContractorLogin from "./pages/Login/Contractor-login.jsx";
 import PublicLogin from "./pages/Login/Public-login.jsx";
 import GovLogin from "./pages/Login/Admin-login.jsx";
+import AdminSignup from "./pages/Signup/Admin-signup.jsx";
+import ContractorSignup from "./pages/Signup/Contractor-signup.jsx";
+import PublicSignup from "./pages/Signup/Public-signup.jsx";
 import Departments from "./pages/Departments.jsx";
 
 const Home = () => (
@@ -27,6 +30,9 @@ const App = () => {
         <Route path="/login/contractor" element={<ContractorLogin />} />
         <Route path="/login/public" element={<PublicLogin />} />
         <Route path="/login/gov" element={<GovLogin />} />
+        <Route path="/signup/admin" element={<AdminSignup />} />
+        <Route path="/signup/contractor" element={<ContractorSignup />} />
+        <Route path="/signup/public" element={<PublicSignup />} />
         <Route path="/departments" element={<Departments />} />
       </Routes>
     </Router>
