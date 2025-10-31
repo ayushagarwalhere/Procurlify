@@ -1,22 +1,53 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 const GovLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please enter both email and password.");
       return;
     }
 
-    // TODO: integrate real auth for government users
+    setLoading(true);
     setError("");
-    navigate("/");
+
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Verify user is admin
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError || userData.role !== 'admin') {
+          // Sign out if not admin
+          await supabase.auth.signOut();
+          throw new Error("Access denied. Admin account required.");
+        }
+
+        navigate("/dashboard/admin");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,9 +106,10 @@ const GovLogin = () => {
 
           <button
             type="submit"
-            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform"
+            disabled={loading}
+            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

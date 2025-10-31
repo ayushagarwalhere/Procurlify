@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 const ContractorLogin = () => {
   const navigate = useNavigate();
@@ -7,18 +8,47 @@ const ContractorLogin = () => {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please enter both email and password.");
       return;
     }
 
-    // TODO: Replace this stub with real auth call
+    setLoading(true);
     setError("");
-    // Simulate successful login and navigate to contractor dashboard (stub)
-    navigate("/");
+
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Verify user is contractor
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError || userData.role !== 'contractor') {
+          // Sign out if not contractor
+          await supabase.auth.signOut();
+          throw new Error("Access denied. Contractor account required.");
+        }
+
+        navigate("/dashboard/contractor");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,9 +107,10 @@ const ContractorLogin = () => {
 
           <button
             type="submit"
-            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform"
+            disabled={loading}
+            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

@@ -1,20 +1,58 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 const PublicLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please enter both email and password.");
       return;
     }
+
+    setLoading(true);
     setError("");
-    navigate("/");
+
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Get user role from users table
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (!userError && userData) {
+          // Navigate based on role
+          if (userData.role === 'admin') {
+            navigate("/dashboard/admin");
+          } else if (userData.role === 'contractor') {
+            navigate("/dashboard/contractor");
+          } else {
+            navigate("/dashboard/public");
+          }
+        } else {
+          navigate("/dashboard/public");
+        }
+      }
+    } catch (err) {
+      setError(err.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -73,9 +111,10 @@ const PublicLogin = () => {
 
           <button
             type="submit"
-            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform"
+            disabled={loading}
+            className="mt-4 bg-white text-black font-semibold py-3 rounded-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

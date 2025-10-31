@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../hooks/useWallet";
+import { supabase } from "../../lib/supabase";
 
 const ContractorSignup = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   // Basic Information
-  const { account, connectWallet, disconnectWallet, getShortAddress, isConnecting, error: walletError, isConnected } = useWallet();
+  const {
+    account,
+    connectWallet,
+    disconnectWallet,
+    getShortAddress,
+    isConnecting,
+    error: walletError,
+    isConnected,
+  } = useWallet();
   const [firmName, setFirmName] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -18,18 +27,67 @@ const ContractorSignup = () => {
   const [bankName, setBankName] = useState("");
   const [bankBranch, setBankBranch] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleNextStep = (e) => {
+  const handleNextStep = async (e) => {
     e.preventDefault();
     if (!firmName || !gstNumber || !email || !password) {
       setError("Please fill all fields in step 1.");
       return;
     }
+
+    if (!isConnected) {
+      setError("Please connect your wallet first.");
+      return;
+    }
+
+    setLoading(true);
     setError("");
-    setStep(2);
+
+    try {
+      // Sign up with Supabase Auth in step 1
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: firmName,
+            role: "contractor",
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      // Wait a moment for the trigger to create the user entry
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Update basic fields now
+      if (authData.user) {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({
+            wallet_address: account || null,
+            name: firmName,
+            firm_name: firmName,
+            gst_number: gstNumber,
+          })
+          .eq("id", authData.user.id);
+
+        if (updateError) {
+          console.error("Error updating user:", updateError);
+        }
+      }
+
+      setStep(2);
+    } catch (err) {
+      setError(err.message || "Failed to create account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (
       !accountName ||
@@ -42,9 +100,42 @@ const ContractorSignup = () => {
       return;
     }
 
-    // TODO: send contractor signup with bank details to backend
+    setLoading(true);
     setError("");
-    navigate("/login/contractor");
+
+    try {
+      // Get the current user (created in step 1)
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("User not found. Please go back and complete step 1.");
+      }
+
+      // Update the users table with bank details
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          bank_account_name: accountName,
+          bank_account_number: accountNumber,
+          bank_ifsc_code: ifscCode,
+          bank_name: bankName,
+          bank_branch: bankBranch,
+        })
+        .eq("id", user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      navigate("/login/contractor");
+    } catch (err) {
+      setError(err.message || "Failed to create account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,8 +158,6 @@ const ContractorSignup = () => {
             {error}
           </div>
         )}
-
-        
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
@@ -113,89 +202,93 @@ const ContractorSignup = () => {
             />
           </div>
 
-          
-
           {step === 1 ? (
             <>
               {walletError && (
-          <div className="bg-red-600/80 text-white p-3 rounded mb-4">
-            {walletError}
-          </div>
-        )}
-
-        {/* MetaMask Wallet Connect */}
-        <div className="mb-6 pb-6 border-b border-white/10">
-          {isConnected ? (
-            <div className="flex items-center justify-between p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                <span className="text-white text-sm font-mono">
-                  {getShortAddress(account)}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={disconnectWallet}
-                className="text-xs text-white/70 hover:text-white underline"
-              >
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={connectWallet}
-              disabled={isConnecting}
-              className="w-full bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isConnecting ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Connecting...
-                </>
-              ) : (
-                <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-                  
-                  Connect MetaMask
-                </>
+                <div className="bg-red-600/80 text-white p-3 rounded mb-4">
+                  {walletError}
+                </div>
               )}
-            </button>
-          )}
-        </div>
+
+              {/* MetaMask Wallet Connect */}
+              <div className="mb-6 pb-6 border-b border-white/10">
+                {isConnected ? (
+                  <div className="flex items-center justify-between p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                      <span className="text-white text-sm font-mono">
+                        {getShortAddress(account)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={disconnectWallet}
+                      className="text-xs text-white/70 hover:text-white underline"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={connectWallet}
+                    disabled={isConnecting}
+                    className="w-full bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                        Connect MetaMask
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
 
               <button
                 type="submit"
-                className="mt-4 bg-white text-black py-2 rounded-lg font-semibold group relative"
+                disabled={loading}
+                className="mt-4 bg-white text-black py-2 rounded-lg font-semibold group relative disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next: Bank Details
-                <svg
-                  className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform group-hover:translate-x-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
+                {loading ? (
+                  "Creating..."
+                ) : (
+                  <>
+                    Next: Bank Details
+                    <svg
+                      className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform group-hover:translate-x-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
+                  </>
+                )}
               </button>
             </>
           ) : (
@@ -262,20 +355,14 @@ const ContractorSignup = () => {
                 </button>
                 <button
                   type="submit"
-                  className="mt-4 bg-white text-black py-1 rounded-lg font-semibold flex-1"
+                  disabled={loading}
+                  className="mt-4 bg-white text-black py-1 rounded-lg font-semibold flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Account
+                  {loading ? "Creating..." : "Create Account"}
                 </button>
               </div>
             </>
           )}
-
-          <button
-            type="submit"
-            className="mt-4 bg-white text-black py-2 rounded-lg font-semibold"
-          >
-            Create Account
-          </button>
         </form>
 
         <div className="text-white/70 text-sm text-center mt-6">
