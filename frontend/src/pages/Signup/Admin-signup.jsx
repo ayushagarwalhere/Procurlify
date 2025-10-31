@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWallet } from "../../hooks/useWallet";
 
 const AdminSignup = () => {
   const navigate = useNavigate();
+  const { account, connectWallet, disconnectWallet, getShortAddress, isConnecting, error: walletError, isConnected } = useWallet();
   const [orgName, setOrgName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +36,53 @@ const AdminSignup = () => {
             {error}
           </div>
         )}
+
+        {walletError && (
+          <div className="bg-red-600/80 text-white p-3 rounded mb-4">
+            {walletError}
+          </div>
+        )}
+
+        {/* MetaMask Wallet Connect */}
+        <div className="mb-6 pb-6 border-b border-white/10">
+          <label className="text-white text-sm mb-2 block">Connect Wallet</label>
+          {isConnected ? (
+            <div className="flex items-center justify-between p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                <span className="text-white text-sm font-mono">
+                  {getShortAddress(account)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={disconnectWallet}
+                className="text-xs text-white/70 hover:text-white underline"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={connectWallet}
+              disabled={isConnecting}
+              className="w-full bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <span>🦊</span>
+                  Connect MetaMask
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
