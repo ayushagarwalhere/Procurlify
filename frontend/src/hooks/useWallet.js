@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { contractAddress, contractAbi } from "../utils/contract";
 
 export const useWallet = () => {
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
-  const [contract, setContract] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -45,14 +43,6 @@ export const useWallet = () => {
         const signerInstance = await providerInstance.getSigner();
         setSigner(signerInstance);
 
-        // Create contract instance
-        const contractInstance = new ethers.Contract(
-          contractAddress,
-          contractAbi,
-          signerInstance
-        );
-        setContract(contractInstance);
-
         // Listen for account changes
         window.ethereum.on("accountsChanged", handleAccountsChanged);
         window.ethereum.on("chainChanged", handleChainChanged);
@@ -89,7 +79,6 @@ export const useWallet = () => {
     setAccount(null);
     setProvider(null);
     setSigner(null);
-    setContract(null);
     setError(null);
   };
 
@@ -133,7 +122,6 @@ export const useWallet = () => {
     account,
     provider,
     signer,
-    contract,
     isConnecting,
     error,
     connectWallet,
