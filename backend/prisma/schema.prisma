@@ -1,0 +1,203 @@
+// Prisma Schema for Procurlify - Government Tender Management System
+// This schema defines all database tables with role-based user management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MODEL - Stores all user accounts
+// ============================================
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  name      String
+  role      UserRole @default(PUBLIC)
+  
+  // Wallet address for blockchain integration (optional)
+  walletAddress String? @map("wallet_address")
+  
+  // Admin-specific fields
+  orgName      String? @map("org_name")
+  designation String?
+  
+  // Contractor-specific fields
+  firmName         String? @map("firm_name")
+  gstNumber        String? @map("gst_number")
+  bankAccountName String? @map("bank_account_name")
+  bankAccountNumber String? @map("bank_account_number")
+  bankIfscCode    String? @map("bank_ifsc_code")
+  bankName        String? @map("bank_name")
+  bankBranch      String? @map("bank_branch")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  createdTenders Tender[]         @relation("TenderCreator")
+  allottedTenders Tender[]        @relation("TenderAllottedTo")
+  submittedBids  Bid[]
+  awardedContracts Contract[]     @relation("ContractAwardedBy")
+  receivedContracts Contract[]     @relation("ContractReceiver")
+  
+  @@map("users")
+}
+
+// User Role Enum
+enum UserRole {
+  ADMIN      // Government/Admin Portal
+  CONTRACTOR // Contractor Portal
+  PUBLIC     // View Portal
+}
+
+// ============================================
+// TENDER MODEL - Government/Admin created tenders
+// ============================================
+model Tender {
+  id            String      @id @default(uuid()) @db.Uuid
+  title         String
+  description   String?     @db.Text
+  category      String?
+  
+  // Status tracking
+  status        TenderStatus @default(DRAFT)
+  
+  // Budget information
+  estimatedBudget Decimal?   @map("estimated_budget") @db.Decimal(15, 2)
+  
+  // Timeline - Important: Separate bid start and end dates
+  createdAt     DateTime    @default(now()) @map("created_at")
+  bidStartDate DateTime?    @map("bid_start_date") // When bidding opens
+  bidEndDate   DateTime     @map("bid_end_date")   // When bidding closes
+  
+  // Allotment tracking
+  isAllotted   Boolean      @default(false) @map("is_allotted")
+  allottedAt   DateTime?    @map("allotted_at")    // When tender was allotted
+  allottedTo   String?      @map("allotted_to")    // Contractor ID if allotted
+  
+  // Blockchain integration
+  blockchainTxHash String?  @map("blockchain_tx_hash")
+  
+  // Relations
+  createdBy    String       @map("created_by")
+  creator      User         @relation("TenderCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  allottedToUser User?      @relation("TenderAllottedTo", fields: [allottedTo], references: [id], onDelete: SetNull)
+  bids         Bid[]
+  contracts    Contract[]
+  
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  
+  @@index([createdBy])
+  @@index([status])
+  @@index([bidStartDate])
+  @@index([bidEndDate])
+  @@index([isAllotted])
+  @@index([category])
+  @@map("tenders")
+}
+
+// Tender Status Enum
+enum TenderStatus {
+  DRAFT      // Tender is being prepared
+  OPEN       // Bidding is open
+  CLOSED     // Bidding has closed, awaiting decision
+  AWARDED    // Tender has been awarded to a contractor
+  CANCELLED  // Tender has been cancelled
+}
+
+// ============================================
+// BID MODEL - Contractor bids on tenders
+// ============================================
+model Bid {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenderId      String      @map("tender_id")
+  contractorId  String      @map("contractor_id")
+  
+  // Bid details
+  bidAmount     Decimal     @map("bid_amount") @db.Decimal(15, 2)
+  proposal      String?     @db.Text
+  
+  // Bid status
+  status        BidStatus   @default(SUBMITTED)
+  
+  // Blockchain integration
+  blockchainTxHash String?  @map("blockchain_tx_hash")
+  
+  // Timestamps
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  tender        Tender      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  contractor    User        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contract      Contract?
+  
+  // Ensure one bid per contractor per tender
+  @@unique([tenderId, contractorId])
+  @@index([tenderId])
+  @@index([contractorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bids")
+}
+
+// Bid Status Enum
+enum BidStatus {
+  SUBMITTED  // Bid has been submitted
+  ACCEPTED   // Bid has been accepted by admin
+  REJECTED   // Bid has been rejected
+  WITHDRAWN  // Contractor withdrew their bid
+}
+
+// ============================================
+// CONTRACT MODEL - Awarded contracts
+// ============================================
+model Contract {
+  id            String         @id @default(uuid()) @db.Uuid
+  bidId         String         @unique @map("bid_id")
+  tenderId      String         @map("tender_id")
+  contractorId  String         @map("contractor_id")
+  awardedBy     String         @map("awarded_by")
+  
+  // Contract details
+  contractValue Decimal        @map("contract_value") @db.Decimal(15, 2)
+  startDate     DateTime       @map("start_date")
+  endDate       DateTime       @map("end_date")
+  
+  // Contract status
+  status        ContractStatus @default(ACTIVE)
+  
+  // Blockchain integration
+  blockchainTxHash String?     @map("blockchain_tx_hash")
+  
+  // Timestamps
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  // Relations
+  bid           Bid            @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  tender        Tender         @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  contractor    User            @relation("ContractReceiver", fields: [contractorId], references: [id], onDelete: Cascade)
+  awardedByUser User            @relation("ContractAwardedBy", fields: [awardedBy], references: [id], onDelete: Cascade)
+  
+  @@index([bidId])
+  @@index([tenderId])
+  @@index([contractorId])
+  @@index([awardedBy])
+  @@index([status])
+  @@map("contracts")
+}
+
+// Contract Status Enum
+enum ContractStatus {
+  ACTIVE      // Contract is currently active
+  COMPLETED   // Contract has been completed
+  TERMINATED  // Contract has been terminated
+}
+
