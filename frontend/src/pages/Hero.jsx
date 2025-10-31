@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
   const navigate = useNavigate();
-  const words = ["Contractors", "Government", "Public"];
+  const words = ["Contractors", "Admin", "Public"];
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -76,7 +76,7 @@ const Hero = () => {
         <div className="flex gap-4 mt-16">
           <img src="/images/check.png" className="w-8" />
           <h1 className="text-2xl font-bold">
-            Public Transparency & mmutable Trust
+            Public Transparency & Immutable Trust
           </h1>
         </div>
 
@@ -86,7 +86,7 @@ const Hero = () => {
               console.log("Navigating to /role");
               navigate("/role");
             }}
-            className="mt-16 ml-[55%] bg-white w-48 h-14 rounded-2xl text-black font-semibold text-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-3"
+            className="mt-12 ml-[55%] bg-white w-48 h-14 rounded-2xl text-black font-semibold text-xl hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-3"
           >
             <span className="whitespace-nowrap">GET STARTED</span>
             <TiLocationArrow size={32} />

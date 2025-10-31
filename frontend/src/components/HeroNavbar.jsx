@@ -6,7 +6,7 @@ const HeroNavbar = () => {
     <div className="absolute h-full w-full bg-black">
       <header className="absolute w-full h-8 bg-gradient-to-r from-[#8e66fe] to-[#f331f0] z-10">
         <h1 className="absolute top-2 left-1/2 -translate-x-1/2 text-white font-serif text-sm">
-          <a href="#about" className="hover:text-gray-300 underline">
+          <a href="#about" className="hover:text-gray-300">
           Procurlify Launches Transparent Tender Network across Blockchain
           Governance - Learn More</a>
         </h1>
@@ -28,7 +28,7 @@ const HeroNavbar = () => {
         </div>
 
         <div className="absolute left-1/2 flex gap-10 h-full items-center italic font-mono text-xl">
-          <h1><a href="#departments" className="hover:text-gray-300 underline">Departments</a></h1>
+          <h1><a href="#departments" className="hover:bg-gradient-to-r from-[#8e66fe] to-[#f331f0] hover:bg-clip-text hover:text-transparent ">Departments</a></h1>
 
           <h1>TenderDetails</h1>
         </div>
