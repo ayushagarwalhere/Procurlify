@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWallet } from "../../hooks/useWallet";
 
 const AdminSignup = () => {
   const navigate = useNavigate();
+  const { account, connectWallet, disconnectWallet, getShortAddress, isConnecting, error: walletError, isConnected } = useWallet();
   const [orgName, setOrgName] = useState("");
   const [fullName, setFullName] = useState("");
   const [designation, setDesignation] = useState("");
@@ -42,6 +44,8 @@ const AdminSignup = () => {
             {error}
           </div>
         )}
+
+        
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
@@ -96,12 +100,45 @@ const AdminSignup = () => {
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => alert("Wallet connection will be implemented")}
-            className="mt-2 bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-2 rounded-lg font-semibold hover:scale-105 transition-transform flex items-center justify-center gap-2"
-          >
-            <svg
+          {walletError && (
+          <div className="bg-red-600/80 text-white p-3 rounded mb-4">
+            {walletError}
+          </div>
+        )}
+
+        {/* MetaMask Wallet Connect */}
+        <div className="mb-2 pb-2 border-b border-white/10">
+          {isConnected ? (
+            <div className="flex items-center justify-between p-1 rounded bg-emerald-500/20 border border-emerald-500/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                <span className="text-white text-sm font-mono">
+                  {getShortAddress(account)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={disconnectWallet}
+                className="text-xs text-white/70 hover:text-white underline"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={connectWallet}
+              disabled={isConnecting}
+              className="w-full bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <svg
               className="w-5 h-5"
               fill="none"
               stroke="currentColor"
@@ -115,8 +152,12 @@ const AdminSignup = () => {
                 d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            Connect Wallet
-          </button>
+                  Connect MetaMask
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
           <button
             type="submit"
@@ -124,6 +165,8 @@ const AdminSignup = () => {
           >
             Create Account
           </button>
+
+
         </form>
 
         <div className="text-white/70 text-sm text-center mt-6">

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWallet } from "../../hooks/useWallet";
 
 const ContractorSignup = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   // Basic Information
+  const { account, connectWallet, disconnectWallet, getShortAddress, isConnecting, error: walletError, isConnected } = useWallet();
   const [firmName, setFirmName] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +56,7 @@ const ContractorSignup = () => {
           className="absolute top-0 w-3/4 left-48 object-center"
         />
       </div>
-      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-xl rounded-xl p-8 border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]">
+      <div className="relative w-full max-w-lg bg-white/10 backdrop-blur-xl rounded-xl p-8 border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]">
         <h1 className="text-white text-2xl font-bold text-center mb-6">
           Contractor Signup -{" "}
           {step === 1 ? "Basic Information" : "Bank Details"}
@@ -66,10 +68,9 @@ const ContractorSignup = () => {
           </div>
         )}
 
-        <form
-          onSubmit={step === 1 ? handleNextStep : handleSubmit}
-          className="flex flex-col gap-4"
-        >
+        
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="text-white text-sm">Firm Name</label>
             <input
@@ -112,13 +113,48 @@ const ContractorSignup = () => {
             />
           </div>
 
+          
+
           {step === 1 ? (
             <>
+              {walletError && (
+          <div className="bg-red-600/80 text-white p-3 rounded mb-4">
+            {walletError}
+          </div>
+        )}
+
+        {/* MetaMask Wallet Connect */}
+        <div className="mb-6 pb-6 border-b border-white/10">
+          {isConnected ? (
+            <div className="flex items-center justify-between p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                <span className="text-white text-sm font-mono">
+                  {getShortAddress(account)}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => alert("Wallet connection will be implemented")}
-                className="mt-4 bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-2 rounded-lg font-semibold hover:scale-105 transition-transform flex items-center justify-center gap-1"
+                onClick={disconnectWallet}
+                className="text-xs text-white/70 hover:text-white underline"
               >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={connectWallet}
+              disabled={isConnecting}
+              className="w-full bg-gradient-to-r from-[#8e66fe] to-[#f331f0] text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Connecting...
+                </>
+              ) : (
+                <>
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -133,8 +169,14 @@ const ContractorSignup = () => {
                     d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
                   />
                 </svg>
-                Connect Wallet
-              </button>
+                  
+                  Connect MetaMask
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
               <button
                 type="submit"
                 className="mt-4 bg-white text-black py-2 rounded-lg font-semibold group relative"
