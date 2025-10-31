@@ -21,6 +21,14 @@ const GovLogin = () => {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
+      <div className="fixed inset-0 w-full h-full">
+        <img
+          src="/images/login-bg.png"
+          alt="background"
+          className="absolute top-0 w-3/4 h-full left-48 object-center"
+        />
+      </div>
+      
       <div className="w-full max-w-md bg-white/5 backdrop-blur-md bg-black border-4 border-transparent bg-clip-border rounded-xl p-8">
         <h1 className="text-white text-3xl font-bold text-center mb-6">
           Admin Login

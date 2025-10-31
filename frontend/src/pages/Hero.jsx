@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
   const navigate = useNavigate();
-  const words = ["Contractors", "Admin", "Public"];
+  const words = ["Contractors", "Clients", "Public"];
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);

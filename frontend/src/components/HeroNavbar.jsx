@@ -27,11 +27,6 @@ const HeroNavbar = () => {
           </h1>
         </div>
 
-        <div className="absolute left-1/2 flex gap-10 h-full items-center italic font-mono text-xl">
-          <h1><a href="#departments" className="hover:bg-gradient-to-r from-[#8e66fe] to-[#f331f0] hover:bg-clip-text hover:text-transparent ">Departments</a></h1>
-
-          <h1>TenderDetails</h1>
-        </div>
 
         <div className="absolute right-16 flex gap-4 italic font-mono">
           <button className="bg-white/80 text-black rounded-full h-10 px-4 flex items-center gap-2">

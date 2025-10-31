@@ -10,13 +10,11 @@ import GovLogin from "./pages/Login/Admin-login.jsx";
 import AdminSignup from "./pages/Signup/Admin-signup.jsx";
 import ContractorSignup from "./pages/Signup/Contractor-signup.jsx";
 import PublicSignup from "./pages/Signup/Public-signup.jsx";
-import Departments from "./pages/Departments.jsx";
 
 const Home = () => (
   <div>
     <HeroNavbar />
     <Hero />
-    <Departments />
     <About />
   </div>
 );
@@ -33,7 +31,6 @@ const App = () => {
         <Route path="/signup/admin" element={<AdminSignup />} />
         <Route path="/signup/contractor" element={<ContractorSignup />} />
         <Route path="/signup/public" element={<PublicSignup />} />
-        <Route path="/departments" element={<Departments />} />
       </Routes>
     </Router>
   );

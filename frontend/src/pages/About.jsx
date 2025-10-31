@@ -19,7 +19,7 @@ const About = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm p-6">
-            <h3 className="text-2xl font-space-grotesk">For Government</h3>
+            <h3 className="text-2xl font-space-grotesk">For Companies/Clients</h3>
             <p className="mt-3 text-white/70">
               Publish tamper-evident tenders, manage evaluations, and ensure fair, compliant processes.
             </p>
