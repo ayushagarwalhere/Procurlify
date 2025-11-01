@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title TenderManagement
- * @dev A smart contract for managing government tenders with transparent bidding
+ *  A smart contract for managing government tenders with transparent bidding
  * Features:
  * - Create tenders with bid start/end times
  * - Submit bids securely
@@ -166,14 +166,14 @@ contract TenderManagement {
     // ============================================
     
     /**
-     * @dev Add or remove admin
+     *  Add or remove admin
      */
     function setAdmin(address _admin, bool _isAdmin) external onlyAdmin {
         admins[_admin] = _isAdmin;
     }
     
     /**
-     * @dev Create a new tender
+     *  Create a new tender
      * @param _title Title of the tender
      * @param _description Detailed description
      * @param _category Category number (0=Infrastructure, 1=Education, 2=Health, 3=Finance, 4=Rural)
@@ -219,7 +219,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Open a tender for bidding
+     *  Open a tender for bidding
      */
     function openTenderForBidding(uint256 _tenderId) 
         external 
@@ -234,7 +234,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Close bidding for a tender
+     *  Close bidding for a tender
      */
     function closeTenderBidding(uint256 _tenderId) 
         external 
@@ -248,7 +248,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Accept a bid and award tender to contractor
+     * Accept a bid and award tender to contractor
      * This creates a contract entry
      */
     function acceptBidAndAwardTender(
@@ -293,7 +293,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Reject a bid
+     *  Reject a bid
      */
     function rejectBid(uint256 _bidId) external onlyAdmin bidExists(_bidId) {
         require(bids[_bidId].status == BidStatus.Submitted, "Bid must be submitted");
@@ -301,7 +301,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Mark contract as completed
+     *  Mark contract as completed
      */
     function completeContract(uint256 _contractId) external onlyAdmin {
         require(_contractId > 0 && _contractId <= contractCount, "Contract does not exist");
@@ -317,7 +317,7 @@ contract TenderManagement {
     // ============================================
     
     /**
-     * @dev Submit a bid for a tender
+     *  Submit a bid for a tender
      * @param _tenderId ID of the tender
      * @param _bidAmount Bid amount in wei
      * @param _proposal Bid proposal text (can be IPFS hash)
@@ -358,7 +358,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Withdraw a bid (before tender closes)
+     *  Withdraw a bid (before tender closes)
      */
     function withdrawBid(uint256 _bidId) external bidExists(_bidId) {
         require(bids[_bidId].contractor == msg.sender, "Only bid owner can withdraw");
@@ -376,7 +376,7 @@ contract TenderManagement {
     // ============================================
     
     /**
-     * @dev Get all bids for a tender (sorted by amount)
+     *  Get all bids for a tender (sorted by amount)
      */
     function getTenderBids(uint256 _tenderId) 
         external 
@@ -388,7 +388,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Get tender details
+     *  Get tender details
      */
     function getTender(uint256 _tenderId) 
         external 
@@ -400,7 +400,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Get bid details
+     *  Get bid details
      */
     function getBid(uint256 _bidId) 
         external 
@@ -412,7 +412,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Get contract details
+     *  Get contract details
      */
     function getContract(uint256 _contractId) 
         external 
@@ -424,7 +424,7 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Get all contracts for a tender
+     *  Get all contracts for a tender
      */
     function getTenderContracts(uint256 _tenderId) 
         external 
@@ -436,21 +436,21 @@ contract TenderManagement {
     }
     
     /**
-     * @dev Get total number of tenders
+     *  Get total number of tenders
      */
     function getTotalTenders() external view returns (uint256) {
         return tenderCount;
     }
     
     /**
-     * @dev Get total number of bids
+     *  Get total number of bids
      */
     function getTotalBids() external view returns (uint256) {
         return bidCount;
     }
     
     /**
-     * @dev Get total number of contracts
+     *  Get total number of contracts
      */
     function getTotalContracts() external view returns (uint256) {
         return contractCount;

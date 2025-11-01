@@ -1,4 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
+// Load environment variables from .env if present
+require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -18,7 +20,6 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545"
     },
-    // Add your testnet/mainnet networks here
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
@@ -29,7 +30,6 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 80001
     },
-    // Add more networks as needed (Polygon, Arbitrum, etc.)
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY
