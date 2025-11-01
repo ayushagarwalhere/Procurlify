@@ -194,7 +194,7 @@ const SubmitBid = () => {
         documents: documentUrls,
       });
 
-      // Step 3: Submit bid on blockchain (optional - only if tender is on blockchain)
+      // Step 3: Submit bid on blockchain
       let blockchainTxHash = null;
       if (tender.blockchain_tender_id && isInitialized) {
         try {
@@ -242,7 +242,7 @@ const SubmitBid = () => {
         contractor_id: userResponse.user.id,
         bid_amount: parseFloat(bidAmount),
         proposal: fullProposal,
-        status: "SUBMITTED",
+        status: "Submitted",
         blockchain_tx_hash: blockchainTxHash,
       };
 
@@ -254,8 +254,21 @@ const SubmitBid = () => {
 
       if (bidError) {
         console.error("Database error:", bidError);
-        // Check if it's a duplicate bid error
-        if (bidError.code === "23505") {
+
+        const isDuplicate =
+          bidError?.code === "23505" ||
+          (typeof bidError?.details === "string" &&
+            /already exists|duplicate key|unique constraint/i.test(
+              bidError.details
+            )) ||
+          (typeof bidError?.message === "string" &&
+            /already exists|duplicate key|unique constraint/i.test(
+              bidError.message
+            )) ||
+          bidError?.status === 409;
+
+        if (isDuplicate) {
+          // Throw a friendly, user-facing message that will be caught below
           throw new Error("You have already submitted a bid for this tender.");
         }
         throw new Error(
@@ -453,7 +466,7 @@ const SubmitBid = () => {
                 </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.1"
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
                   placeholder="Enter your bid amount"
