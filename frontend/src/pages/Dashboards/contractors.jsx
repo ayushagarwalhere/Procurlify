@@ -5,6 +5,7 @@ import ContractorMainDashboard from "./Contractor/ContractorMainDashboard";
 import AvailableTenders from "./Contractor/AvailableTenders";
 import MyBids from "./Contractor/MyBids";
 import PriceIntelligence from "./Contractor/PriceIntelligence";
+import SubmitBid from "./Contractor/SubmitBid";
 import { useWallet } from "../../hooks/useWallet";
 
 const ContractorDashboard = () => {
@@ -74,6 +75,7 @@ const ContractorDashboard = () => {
           <Routes>
             <Route index element={<ContractorMainDashboard />} />
             <Route path="tenders" element={<AvailableTenders />} />
+            <Route path="submit-bid/:tenderId" element={<SubmitBid />} />
             <Route path="bids" element={<MyBids />} />
             <Route path="contracts" element={<MyContracts />} />
             <Route path="projects" element={<MyProjects />} />

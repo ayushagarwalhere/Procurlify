@@ -12,16 +12,32 @@ const AvailableTenders = () => {
   useEffect(() => {
     const fetchTenders = async () => {
       try {
-        let query = supabase
+        // Fetch all tenders from Supabase (not just OPEN status)
+        const { data: tendersData, error: tendersError } = await supabase
           .from("tenders")
           .select("*")
-          .eq("status", "OPEN")
           .order("created_at", { ascending: false });
 
-        const { data, error } = await query;
+        if (tendersError) throw tendersError;
 
-        if (error) throw error;
-        setTenders(data || []);
+        // Fetch bid counts for each tender
+        const tendersWithBids = await Promise.all(
+          (tendersData || []).map(async (tender) => {
+            const { data: bidsData, error: bidsError } = await supabase
+              .from("bids")
+              .select("id")
+              .eq("tender_id", tender.id);
+
+            if (bidsError) {
+              console.error("Error fetching bid count:", bidsError);
+              return { ...tender, bidCount: 0 };
+            }
+
+            return { ...tender, bidCount: bidsData?.length || 0 };
+          })
+        );
+
+        setTenders(tendersWithBids || []);
       } catch (error) {
         console.error("Error fetching tenders:", error);
       } finally {
@@ -47,30 +63,59 @@ const AvailableTenders = () => {
   ];
 
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-    });
+    if (!dateString) return "Invalid Date";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return "Budget not specified";
-    return new Intl.NumberFormat("en-US", {
+    if (!amount) return "₹0";
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: "USD",
+      currency: "INR",
       minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(parseFloat(amount));
+  };
+
+  const formatStatus = (status) => {
+    if (!status) return "draft";
+    return status.toLowerCase();
+  };
+
+  const getStatusColor = (status) => {
+    const lowerStatus = formatStatus(status);
+    switch (lowerStatus) {
+      case "draft":
+        return "bg-gray-600 text-white";
+      case "open":
+        return "bg-green-600 text-white";
+      case "closed":
+        return "bg-orange-600 text-white";
+      case "awarded":
+        return "bg-blue-600 text-white";
+      case "cancelled":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-600 text-white";
+    }
   };
 
   return (
     <div className="p-8 bg-black min-h-screen">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Available Tenders</h1>
-        <p className="text-white/60">Browse and bid on published tenders</p>
+        <h1 className="text-3xl font-bold text-white mb-2">All Tenders</h1>
+        <p className="text-white/60">Browse all available tenders</p>
       </div>
 
       {/* Search and Filter Bar */}
@@ -98,7 +143,7 @@ const AvailableTenders = () => {
         </select>
       </div>
 
-      {/* Tenders List */}
+      {/* Tenders Table */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-white">Loading tenders...</div>
@@ -108,65 +153,52 @@ const AvailableTenders = () => {
           <p className="text-white text-lg">No tenders available</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {filteredTenders.map((tender) => (
-            <div
-              key={tender.id}
-              className="bg-white/5 border border-white/10 rounded-lg p-6 shadow-sm hover:border-white/20 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2">{tender.title}</h3>
-                  <span className="inline-block px-3 py-1 bg-white/20 text-white rounded-full text-xs font-medium">
-                    Published
-                  </span>
-                </div>
-              </div>
-
-              {tender.category && (
-                <p className="text-sm text-white/60 mb-3">{tender.category}</p>
-              )}
-
-              {tender.description && (
-                <p className="text-white/80 mb-4 line-clamp-2">
-                  {tender.description.length > 150
-                    ? `${tender.description.substring(0, 150)}...`
-                    : tender.description}
-                </p>
-              )}
-
-              {/* Details Row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-white">{formatCurrency(tender.estimated_budget)}</span>
-                </div>
-
-                {tender.bid_end_date && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white">
-                      Closes: {formatDate(tender.bid_end_date)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => navigate(`/tender/${tender.id}`)}
-                  className="px-6 py-2 border border-white/20 text-white rounded-lg hover:bg-white/10 font-medium transition-colors"
-                >
-                  View Details
-                </button>
-                <button
-                  onClick={() => navigate(`/tender/${tender.id}`)}
-                  className="px-6 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
-                >
-                  Submit Bid
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white/10">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Title</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Category</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Budget</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Bids</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Deadline</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {filteredTenders.map((tender) => (
+                  <tr key={tender.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4 text-white font-medium">{tender.title || "N/A"}</td>
+                    <td className="px-6 py-4 text-white/80">{tender.category || "N/A"}</td>
+                    <td className="px-6 py-4 text-white">{formatCurrency(tender.estimated_budget)}</td>
+                    <td className="px-6 py-4 text-white">{tender.bidCount || 0}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          tender.status
+                        )}`}
+                      >
+                        {formatStatus(tender.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-white/80">
+                      {formatDate(tender.bid_end_date || tender.closing_date)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => navigate(`/dashboard/contractor/submit-bid/${tender.id}`)}
+                        className="px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Submit Bid
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
