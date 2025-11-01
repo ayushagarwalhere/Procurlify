@@ -20,7 +20,7 @@ const TENDER_MANAGEMENT_ABI = [
 ];
 
 // Contract address - Update this after deploying your contract
-const CONTRACT_ADDRESS = process.env.VITE_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
 
 /**
  * Custom hook for interacting with TenderManagement smart contract

@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
-import { useWallet } from "../../hooks/useWallet";
-import { useContract } from "../../hooks/useContract";
-import { supabase } from "../../lib/supabase";
+import { useWallet } from "../hooks/useWallet";
+import { useContract } from "../hooks/useContract";
+import { supabase } from "../lib/supabase";
 
 const CreateTender = () => {
   const navigate = useNavigate();

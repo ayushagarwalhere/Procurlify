@@ -62,24 +62,35 @@ const ContractorSignup = () => {
       // Wait a moment for the trigger to create the user entry
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Update basic fields now
+      // Update basic fields only if they are not already set
       if (authData.user) {
-        const { error: updateError } = await supabase
+        const { data: existingUser, error: fetchError } = await supabase
           .from("users")
-          .update({
-            wallet_address: account || null,
-            name: firmName,
-            firm_name: firmName,
-            gst_number: gstNumber,
-          })
-          .eq("id", authData.user.id);
+          .select("wallet_address, name, firm_name, gst_number")
+          .eq("id", authData.user.id)
+          .single();
 
-        if (updateError) {
-          console.error("Error updating user:", updateError);
+        if (fetchError) throw fetchError;
+
+        const updates = {};
+        if (existingUser.wallet_address !== account) updates.wallet_address = account || null;
+        if (existingUser.name !== firmName) updates.name = firmName;
+        if (existingUser.firm_name !== firmName) updates.firm_name = firmName;
+        if (existingUser.gst_number !== gstNumber) updates.gst_number = gstNumber;
+
+        if (Object.keys(updates).length > 0) {
+          const { error: updateError } = await supabase
+            .from("users")
+            .update(updates)
+            .eq("id", authData.user.id);
+
+          if (updateError) {
+            console.error("Error updating user:", updateError);
+          }
         }
       }
 
-      setStep(2);
+      setStep(2); // Transition to step 2
     } catch (err) {
       setError(err.message || "Failed to create account. Please try again.");
     } finally {
@@ -89,13 +100,7 @@ const ContractorSignup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (
-      !accountName ||
-      !accountNumber ||
-      !ifscCode ||
-      !bankName ||
-      !bankBranch
-    ) {
+    if (!accountName || !accountNumber || !ifscCode || !bankName || !bankBranch) {
       setError("Please fill all bank details.");
       return;
     }
@@ -114,20 +119,31 @@ const ContractorSignup = () => {
         throw new Error("User not found. Please go back and complete step 1.");
       }
 
-      // Update the users table with bank details
-      const { error: updateError } = await supabase
+      // Update bank details only if they are not already set
+      const { data: existingUser, error: fetchError } = await supabase
         .from("users")
-        .update({
-          bank_account_name: accountName,
-          bank_account_number: accountNumber,
-          bank_ifsc_code: ifscCode,
-          bank_name: bankName,
-          bank_branch: bankBranch,
-        })
-        .eq("id", user.id);
+        .select("bank_account_name, bank_account_number, bank_ifsc_code, bank_name, bank_branch")
+        .eq("id", user.id)
+        .single();
 
-      if (updateError) {
-        throw updateError;
+      if (fetchError) throw fetchError;
+
+      const updates = {};
+      if (existingUser.bank_account_name !== accountName) updates.bank_account_name = accountName;
+      if (existingUser.bank_account_number !== accountNumber) updates.bank_account_number = accountNumber;
+      if (existingUser.bank_ifsc_code !== ifscCode) updates.bank_ifsc_code = ifscCode;
+      if (existingUser.bank_name !== bankName) updates.bank_name = bankName;
+      if (existingUser.bank_branch !== bankBranch) updates.bank_branch = bankBranch;
+
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update(updates)
+          .eq("id", user.id);
+
+        if (updateError) {
+          throw new Error("Failed to update bank details. Please try again.");
+        }
       }
 
       navigate("/login/contractor");
@@ -159,51 +175,52 @@ const ContractorSignup = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="text-white text-sm">Firm Name</label>
-            <input
-              value={firmName}
-              onChange={(e) => setFirmName(e.target.value)}
-              placeholder="Company / Firm name"
-              className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
-            />
-          </div>
-
-          <div>
-            <label className="text-white text-sm">GST Number</label>
-            <input
-              value={gstNumber}
-              onChange={(e) => setGstNumber(e.target.value)}
-              placeholder="GSTIN"
-              className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
-            />
-          </div>
-
-          <div>
-            <label className="text-white text-sm">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@firm.com"
-              className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
-            />
-          </div>
-
-          <div>
-            <label className="text-white text-sm">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create a password"
-              className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
-            />
-          </div>
-
-          {step === 1 ? (
+        <form onSubmit={step === 1 ? handleNextStep : handleSubmit} className="flex flex-col gap-4">
+          {/* Step 1: Basic Information */}
+          {step === 1 && (
             <>
+              <div>
+                <label className="text-white text-sm">Firm Name</label>
+                <input
+                  value={firmName}
+                  onChange={(e) => setFirmName(e.target.value)}
+                  placeholder="Company / Firm name"
+                  className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
+                />
+              </div>
+
+              <div>
+                <label className="text-white text-sm">GST Number</label>
+                <input
+                  value={gstNumber}
+                  onChange={(e) => setGstNumber(e.target.value)}
+                  placeholder="GSTIN"
+                  className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
+                />
+              </div>
+
+              <div>
+                <label className="text-white text-sm">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@firm.com"
+                  className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
+                />
+              </div>
+
+              <div>
+                <label className="text-white text-sm">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a password"
+                  className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
+                />
+              </div>
+
               {walletError && (
                 <div className="bg-red-600/80 text-white p-3 rounded mb-4">
                   {walletError}
@@ -262,41 +279,14 @@ const ContractorSignup = () => {
                   </button>
                 )}
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-4 bg-white text-black py-2 rounded-lg font-semibold group relative disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  "Creating..."
-                ) : (
-                  <>
-                    Next: Bank Details
-                    <svg
-                      className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform group-hover:translate-x-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M14 5l7 7m0 0l-7 7m7-7H3"
-                      />
-                    </svg>
-                  </>
-                )}
-              </button>
             </>
-          ) : (
+          )}
+
+          {/* Step 2: Bank Details */}
+          {step === 2 && (
             <>
               <div>
-                <label className="text-white text-sm">
-                  Account Holder Name
-                </label>
+                <label className="text-white text-sm">Account Holder Name</label>
                 <input
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
@@ -344,25 +334,28 @@ const ContractorSignup = () => {
                   className="mt-2 w-full p-1 rounded bg-white/10 text-white border border-white/5"
                 />
               </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="mt-4 bg-gray-500 text-white py-1 rounded-lg font-semibold flex-1"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-4 bg-white text-black py-1 rounded-lg font-semibold flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Creating..." : "Create Account"}
-                </button>
-              </div>
             </>
           )}
+
+          {/* Buttons */}
+          <div className="flex gap-4">
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="mt-4 bg-gray-500 text-white py-1 rounded-lg font-semibold flex-1"
+              >
+                Back
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-4 bg-white text-black py-1 rounded-lg font-semibold flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Processing..." : step === 1 ? "Next: Bank Details" : "Create Account"}
+            </button>
+          </div>
         </form>
 
         <div className="text-white/70 text-sm text-center mt-6">
