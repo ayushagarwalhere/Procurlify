@@ -83,6 +83,7 @@ model Tender {
   
   // Blockchain integration
   blockchainTxHash String?  @map("blockchain_tx_hash")
+  blockchainTenderId Int?   @map("blockchain_tender_id")  // Tender ID from smart contract
   
   // Relations
   createdBy    String       @map("created_by")

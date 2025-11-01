@@ -1,0 +1,30 @@
+{
+  "name": "procurlify-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for Procurlify tender management",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:local": "hardhat run deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run deploy.js --network sepolia",
+    "deploy:mumbai": "hardhat run deploy.js --network mumbai",
+    "test": "hardhat test",
+    "node": "hardhat node"
+  },
+  "keywords": [
+    "ethereum",
+    "tender",
+    "government",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.8"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0"
+  }
+}
+
