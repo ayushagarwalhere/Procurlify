@@ -242,7 +242,7 @@ const SubmitBid = () => {
         contractor_id: userResponse.user.id,
         bid_amount: parseFloat(bidAmount),
         proposal: fullProposal,
-        status: "Submitted",
+        status: "submitted",
         blockchain_tx_hash: blockchainTxHash,
       };
 
