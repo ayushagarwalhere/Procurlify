@@ -29,14 +29,23 @@ const GovLogin = () => {
 
       // Verify user is admin
       if (data.user) {
+        console.log("Authenticated user ID:", data.user.id); // Debugging: Log user ID
+
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role')
-          .eq('id', data.user.id)
+          .eq('id', data.user.id) // Ensure this matches the `id` column in your `users` table
           .single();
 
-        if (userError || userData.role !== 'admin') {
-          // Sign out if not admin
+        if (userError) {
+          console.error("Error fetching user role:", userError);
+          throw new Error("Failed to verify user role.");
+        }
+
+        console.log("Fetched user role:", userData.role); // Debugging: Log fetched role
+
+        if (userData.role !== 'admin') {
+          console.warn("Access denied. User role:", userData.role);
           await supabase.auth.signOut();
           throw new Error("Access denied. Admin account required.");
         }
@@ -44,6 +53,7 @@ const GovLogin = () => {
         navigate("/dashboard/admin");
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError(err.message || "Failed to sign in. Please check your credentials.");
     } finally {
       setLoading(false);

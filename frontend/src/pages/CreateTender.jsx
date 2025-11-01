@@ -60,13 +60,13 @@ const CreateTender = () => {
       const bidEndTimestamp = new Date(`${bidEndDate}T${bidEndTime}`).getTime();
 
       // Validate dates
-      if (bidStartTimestamp < Date.now()) {
-        throw new Error("Bid start time must be in the future");
-      }
+      // if (bidStartTimestamp < Date.now()) {
+      //   throw new Error("Bid start time must be in the future");
+      // }
 
-      if (bidEndTimestamp <= bidStartTimestamp) {
-        throw new Error("Bid end time must be after start time");
-      }
+      // if (bidEndTimestamp <= bidStartTimestamp) {
+      //   throw new Error("Bid end time must be after start time");
+      // }
 
       // Step 1: Create tender on blockchain
       setStatus("Step 1/3: Deploying tender smart contract...");
@@ -107,11 +107,15 @@ const CreateTender = () => {
 
       // Step 2: Get current user from Supabase
       setStatus("Step 2/3: Saving tender details to database...");
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error("You must be logged in to create a tender");
+      const { data: userResponse, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !userResponse?.user?.id) {
+        console.error("Failed to fetch user details:", userError || "User ID is undefined");
+        throw new Error("You must be logged in to create a tender.");
       }
+
+      const userId = userResponse.user.id; // Extract the user ID
+      console.log("Fetched user ID:", userId); // Debugging: Log the user ID
 
       // Step 3: Save to Supabase database
       const tenderData = {
@@ -122,7 +126,7 @@ const CreateTender = () => {
         bid_start_date: new Date(bidStartTimestamp).toISOString(),
         closing_date: new Date(bidEndTimestamp).toISOString(),
         opening_date: new Date(bidStartTimestamp).toISOString(), // For backward compatibility
-        created_by: user.id,
+        created_by: userId, // Use the valid user ID
         status: 'draft',
         is_allotted: false,
         blockchain_tx_hash: blockchainReceipt.hash,
@@ -130,7 +134,7 @@ const CreateTender = () => {
       };
 
       const { data: dbTender, error: dbError } = await supabase
-        .from('tenders')
+        .from("tenders")
         .insert([tenderData])
         .select()
         .single();

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../hooks/useWallet";
+import { supabase } from "../../lib/supabase";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -38,6 +39,52 @@ const AdminDashboard = () => {
       deadline: "2025-11-30",
     },
   ];
+
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchTenders = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        // Get the current admin user
+        const { data: userResponse, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !userResponse?.user?.id) {
+          console.error(
+            "Failed to fetch user details:",
+            userError || "User ID is undefined"
+          );
+          throw new Error("Failed to fetch user details. Please log in again.");
+        }
+
+        const userId = userResponse.user.id; // Extract the user ID
+        console.log("Fetched user ID:", userId); // Debugging: Log the user ID
+
+        // Fetch tenders created by the admin
+        const { data, error } = await supabase
+          .from("tenders")
+          .select("*")
+          .eq("created_by", userId)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        setTenders(data);
+      } catch (err) {
+        console.error("Error fetching tenders:", err);
+        setError(
+          err.message || "Failed to load tenders. Please try again later."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTenders();
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -79,7 +126,7 @@ const AdminDashboard = () => {
 
         {/* Actions */}
         <div className="flex gap-4 mb-8">
-          <button 
+          <button
             onClick={() => navigate("/tender/create")}
             className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
           >
@@ -133,6 +180,56 @@ const AdminDashboard = () => {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* My Tenders Section */}
+        <div className="bg-white p-4 rounded shadow mt-6">
+          <h2 className="text-lg font-bold mb-4">My Tenders</h2>
+          {loading ? (
+            <p>Loading tenders...</p>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : tenders.length === 0 ? (
+            <p>No tenders created yet.</p>
+          ) : (
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-300 px-4 py-2">Title</th>
+                  <th className="border border-gray-300 px-4 py-2">Category</th>
+                  <th className="border border-gray-300 px-4 py-2">Budget</th>
+                  <th className="border border-gray-300 px-4 py-2">Status</th>
+                  <th className="border border-gray-300 px-4 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenders.map((tender) => (
+                  <tr key={tender.id} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2">
+                      {tender.title}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {tender.category}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {tender.estimated_budget}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {tender.status}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      <button
+                        className="text-blue-500 underline"
+                        onClick={() => navigate(`/tender/${tender.id}`)}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
     </div>
