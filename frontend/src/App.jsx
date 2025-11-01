@@ -13,6 +13,7 @@ import PublicSignup from "./pages/Signup/Public-signup.jsx";
 import AdminDashboard from "./pages/Dashboards/admin.jsx";
 import ContractorDashboard from "./pages/Dashboards/contractors.jsx";
 import PublicDashboard from "./pages/Dashboards/public.jsx";
+import CreateTender from "./pages/CreateTender.jsx";
 
 const Home = () => (
   <div>
@@ -37,6 +38,7 @@ const App = () => {
         <Route path="/dashboard/admin" element={<AdminDashboard />} />
         <Route path="/dashboard/contractor" element={<ContractorDashboard />} />
         <Route path="/dashboard/public" element={<PublicDashboard />} />
+        <Route path="/tender/create" element={<CreateTender />} />
       </Routes>
     </Router>
   );

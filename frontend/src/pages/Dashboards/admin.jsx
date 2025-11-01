@@ -79,7 +79,10 @@ const AdminDashboard = () => {
 
         {/* Actions */}
         <div className="flex gap-4 mb-8">
-          <button className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors">
+          <button 
+            onClick={() => navigate("/tender/create")}
+            className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
+          >
             Create New Tender
           </button>
         </div>
