@@ -10,7 +10,7 @@ const AdminDashboard = () => {
 
   const [stats, setStats] = useState([
     { label: "Tenders under Construction", value: "0" },
-    { label: "Total Tenders Created", value: "0" },
+    { label: "Total Tenders Created", value: "3" },
     { label: "Active Bids", value: "0" },
     { label: "Pending Reviews", value: "0" },
   ]);
