@@ -8,37 +8,12 @@ const AdminDashboard = () => {
   const { account, getShortAddress, disconnectWallet, isConnected } =
     useWallet();
 
-  // Example stats - in a real app, these would come from your backend
-  const stats = [
-    { label: "Tenders under Construction", value: "3" },
-    { label: "Total Tenders Created", value: "18" },
-    { label: "Active Bids", value: "2" },
-    { label: "Pending Reviews", value: "1" },
-  ];
-
-  const recentTenders = [
-    {
-      id: 1,
-      title: "Infrastructure Development Project",
-      bids: 8,
-      status: "Work in progress",
-      deadline: "2025-12-01",
-    },
-    {
-      id: 2,
-      title: "Smart City Initiative",
-      bids: 12,
-      status: "Under Review",
-      deadline: "2025-11-15",
-    },
-    {
-      id: 3,
-      title: "Public Transport Upgrade",
-      bids: 5,
-      status: "Bidding Ongoing",
-      deadline: "2025-11-30",
-    },
-  ];
+  const [stats, setStats] = useState([
+    { label: "Tenders under Construction", value: "0" },
+    { label: "Total Tenders Created", value: "0" },
+    { label: "Active Bids", value: "0" },
+    { label: "Pending Reviews", value: "0" },
+  ]);
 
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +25,8 @@ const AdminDashboard = () => {
       setError("");
       try {
         // Get the current admin user
-        const { data: userResponse, error: userError } = await supabase.auth.getUser();
+        const { data: userResponse, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userResponse?.user?.id) {
           console.error(
@@ -134,102 +110,156 @@ const AdminDashboard = () => {
           </button>
         </div>
 
-        {/* Recent Tenders Table */}
+        {/* Tenders Table */}
         <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
-          <h2 className="text-xl font-semibold p-6 border-b border-white/10">
-            Recent Tenders
-          </h2>
+          <div className="p-6 border-b border-white/10 flex justify-between items-center">
+            <h2 className="text-xl font-semibold">All Tenders</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate("/tender/create")}
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
+              >
+                Create New Tender
+              </button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left p-4 text-white/60">Title</th>
-                  <th className="text-left p-4 text-white/60">Bids</th>
-                  <th className="text-left p-4 text-white/60">Status</th>
-                  <th className="text-left p-4 text-white/60">Deadline</th>
-                  <th className="text-left p-4 text-white/60">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTenders.map((tender) => (
-                  <tr
-                    key={tender.id}
-                    className="border-b border-white/10 hover:bg-white/5"
-                  >
-                    <td className="p-4">{tender.title}</td>
-                    <td className="p-4">{tender.bids}</td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-sm ${
-                          tender.status === "Under Review"
-                            ? "bg-emerald-500/20 text-emerald-300"
-                            : "bg-yellow-500/20 text-yellow-300"
-                        }`}
-                      >
-                        {tender.status}
-                      </span>
-                    </td>
-                    <td className="p-4">{tender.deadline}</td>
-                    <td className="p-4">
-                      <button className="text-white/60 hover:text-white">
-                        View Details
-                      </button>
-                    </td>
+            {loading ? (
+              <div className="p-6 text-center text-white/60">
+                Loading tenders...
+              </div>
+            ) : error ? (
+              <div className="p-6 text-center text-red-400">{error}</div>
+            ) : tenders.length === 0 ? (
+              <div className="p-6 text-center text-white/60">
+                No tenders created yet.
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 text-white/60">Title</th>
+                    <th className="text-left p-4 text-white/60">Category</th>
+                    <th className="text-left p-4 text-white/60">Budget</th>
+                    <th className="text-left p-4 text-white/60">Bids</th>
+                    <th className="text-left p-4 text-white/60">Status</th>
+                    <th className="text-left p-4 text-white/60">Deadline</th>
+                    <th className="text-left p-4 text-white/60">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tenders.map((tender) => (
+                    <tr
+                      key={tender.id}
+                      className="border-b border-white/10 hover:bg-white/5"
+                    >
+                      <td className="p-4">{tender.title}</td>
+                      <td className="p-4">{tender.category}</td>
+                      <td className="p-4">₹{tender.estimated_budget}</td>
+                      <td className="p-4">{tender.bids?.count || 0}</td>
+                      <td className="p-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${
+                            tender.status === "completed"
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : tender.status === "in_progress"
+                              ? "bg-yellow-500/20 text-yellow-300"
+                              : "bg-white/20 text-white"
+                          }`}
+                        >
+                          {tender.status === "completed"
+                            ? "Completed"
+                            : tender.status === "in_progress"
+                            ? "In Progress"
+                            : tender.status === "review_pending"
+                            ? "Under Review"
+                            : tender.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        {new Date(tender.deadline).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => navigate(`/tender/${tender.id}`)}
+                          className="text-white/60 hover:text-white"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
-
-        {/* My Tenders Section */}
-        <div className="bg-white p-4 rounded shadow mt-6">
-          <h2 className="text-lg font-bold mb-4">My Tenders</h2>
-          {loading ? (
-            <p>Loading tenders...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : tenders.length === 0 ? (
-            <p>No tenders created yet.</p>
-          ) : (
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-4 py-2">Title</th>
-                  <th className="border border-gray-300 px-4 py-2">Category</th>
-                  <th className="border border-gray-300 px-4 py-2">Budget</th>
-                  <th className="border border-gray-300 px-4 py-2">Status</th>
-                  <th className="border border-gray-300 px-4 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenders.map((tender) => (
-                  <tr key={tender.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">
-                      {tender.title}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {tender.category}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {tender.estimated_budget}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {tender.status}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      <button
-                        className="text-blue-500 underline"
-                        onClick={() => navigate(`/tender/${tender.id}`)}
-                      >
-                        View Details
-                      </button>
-                    </td>
+        <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden mt-8">
+          <h2 className="text-xl font-semibold p-6 border-b border-white/10">
+            My Tenders
+          </h2>
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-6 text-center text-white/60">
+                Loading tenders...
+              </div>
+            ) : error ? (
+              <div className="p-6 text-center text-red-400">{error}</div>
+            ) : tenders.length === 0 ? (
+              <div className="p-6 text-center text-white/60">
+                No tenders created yet.
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 text-white/60">Title</th>
+                    <th className="text-left p-4 text-white/60">Category</th>
+                    <th className="text-left p-4 text-white/60">Budget</th>
+                    <th className="text-left p-4 text-white/60">Status</th>
+                    <th className="text-left p-4 text-white/60">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {tenders.map((tender) => (
+                    <tr
+                      key={tender.id}
+                      className="border-b border-white/10 hover:bg-white/5"
+                    >
+                      <td className="p-4">{tender.title}</td>
+                      <td className="p-4">{tender.category}</td>
+                      <td className="p-4">₹{tender.estimated_budget}</td>
+                      <td className="p-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${
+                            tender.status === "completed"
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : tender.status === "in_progress"
+                              ? "bg-yellow-500/20 text-yellow-300"
+                              : "bg-white/20 text-white"
+                          }`}
+                        >
+                          {tender.status === "completed"
+                            ? "Completed"
+                            : tender.status === "in_progress"
+                            ? "In Progress"
+                            : tender.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => navigate(`/tender/${tender.id}`)}
+                          className="text-white/60 hover:text-white"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </main>
     </div>
