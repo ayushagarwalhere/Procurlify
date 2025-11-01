@@ -19,35 +19,19 @@ const ProUpgradeModal = ({ isOpen, onClose, onUpgrade }) => {
       description: "AI-powered Fast-Bid system with pre-filled forms based on past successful bids",
     },
     {
-      title: "Advanced Analytics",
-      description: "Real-time win rate analysis, competitor insights, and sector-wise performance metrics",
-    },
-    {
       title: "Bid History & Insights",
       description: "View competitor bid history and track historical bid trends by sector",
-    },
-    {
-      title: "Unlimited Bids",
-      description: "Submit unlimited bids per month without restrictions",
-    },
-    {
-      title: "Dedicated Support",
-      description: "Priority customer support with dedicated account manager",
-    },
-    {
-      title: "Advanced Contract Management",
-      description: "Enhanced contract tracking, milestone management, and payment tracking",
     },
   ];
 
   const plans = {
     monthly: {
-      price: "$49",
+      price: "$4",
       period: "month",
       save: "",
     },
     yearly: {
-      price: "$490",
+      price: "$39",
       period: "year",
       save: "Save 17%",
     },
