@@ -1,0 +1,12 @@
+[package]
+name = "TenderPayment"
+version = "0.1.0"
+
+[addresses]
+# Map module named address "tender_payment" to a concrete address for compilation/testing.
+# Use 0x1 for local testing; replace with deployer address for real deployments.
+tender_payment = "0x1"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
+
