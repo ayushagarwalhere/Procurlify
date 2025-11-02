@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useContract } from "../hooks/useContract";
+import { ethers } from "ethers";
 
 const TenderDetails = () => {
   const { tenderId } = useParams(); // Get tender ID from URL
@@ -9,6 +11,19 @@ const TenderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [trackingData, setTrackingData] = useState([]);
   const [isTrackingExpanded, setIsTrackingExpanded] = useState(false);
+  const [lowestBid, setLowestBid] = useState(null);
+  const [canClose, setCanClose] = useState({ canClose: false, reason: "" });
+  const [isClosing, setIsClosing] = useState(false);
+  const [bids, setBids] = useState([]);
+  
+  const { 
+    closeTenderAndAwardLowestBid, 
+    getLowestBid, 
+    canCloseTender,
+    getTenderBids,
+    getBid,
+    isInitialized 
+  } = useContract();
 
   useEffect(() => {
     const fetchTenderDetails = async () => {
@@ -35,6 +50,47 @@ const TenderDetails = () => {
 
     fetchTenderDetails();
   }, [tenderId]);
+
+  // Fetch blockchain data for tender
+  useEffect(() => {
+    const fetchBlockchainData = async () => {
+      if (!isInitialized || !tender?.blockchain_tender_id) return;
+
+      try {
+        // Check if tender can be closed
+        const closeStatus = await canCloseTender(tender.blockchain_tender_id);
+        setCanClose(closeStatus);
+
+        // Get lowest bid if tender is open
+        if (tender.status === "open" || tender.status === "in_progress") {
+          const lowest = await getLowestBid(tender.blockchain_tender_id);
+          if (lowest.lowestBidId > 0) {
+            setLowestBid({
+              bidId: lowest.lowestBidId.toString(),
+              amount: ethers.formatEther(lowest.lowestBidAmount),
+              contractor: lowest.contractor
+            });
+          }
+
+          // Fetch all bids
+          const bidIds = await getTenderBids(tender.blockchain_tender_id);
+          const bidPromises = bidIds.map(id => getBid(id));
+          const bidsData = await Promise.all(bidPromises);
+          setBids(bidsData.map((bid, idx) => ({
+            id: bidIds[idx].toString(),
+            contractor: bid.contractor,
+            amount: ethers.formatEther(bid.bidAmount),
+            proposal: bid.proposal,
+            status: bid.status
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching blockchain data:", error);
+      }
+    };
+
+    fetchBlockchainData();
+  }, [isInitialized, tender, canCloseTender, getLowestBid, getTenderBids, getBid]);
 
   const generateTrackingTimeline = (tenderData) => {
     const timeline = [];
@@ -189,6 +245,45 @@ const TenderDetails = () => {
     }
   };
 
+  const handleCloseTenderAndAward = async () => {
+    if (!tender?.blockchain_tender_id) {
+      alert("Tender not found on blockchain");
+      return;
+    }
+
+    if (!canClose.canClose) {
+      alert(canClose.reason || "Tender cannot be closed yet");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to close this tender and award it to the lowest bidder (${lowestBid?.contractor})?`)) {
+      return;
+    }
+
+    setIsClosing(true);
+    try {
+      // Set contract dates (start now, end in 90 days)
+      const startDate = new Date();
+      const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+      const receipt = await closeTenderAndAwardLowestBid(
+        tender.blockchain_tender_id,
+        startDate,
+        endDate
+      );
+
+      alert("Tender closed and awarded successfully!");
+      
+      // Refresh page data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error closing tender:", error);
+      alert("Failed to close tender: " + (error.message || "Unknown error"));
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -230,6 +325,51 @@ const TenderDetails = () => {
           <h1 className="text-4xl font-bold mb-2">{tender.title}</h1>
           <p className="text-white/60 text-lg">{tender.category}</p>
         </div>
+
+        {/* Lowest Bid Alert - Show if tender is open and past deadline */}
+        {lowestBid && canClose.canClose && (
+          <div className="mb-8 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-2xl">🏆</span>
+                  <h3 className="text-xl font-bold text-emerald-300">Lowest Bid Available</h3>
+                </div>
+                <p className="text-white/80 mb-3">Bidding period has ended. Ready to award to lowest bidder.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-white/60 text-sm">Contractor Address</p>
+                    <p className="font-mono text-emerald-300">{lowestBid.contractor.slice(0, 10)}...{lowestBid.contractor.slice(-8)}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm">Bid Amount</p>
+                    <p className="text-2xl font-bold text-emerald-300">₹{parseFloat(lowestBid.amount).toFixed(4)} ETH</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseTenderAndAward}
+                disabled={isClosing}
+                className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isClosing ? "Closing..." : "Close & Award Tender"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Cannot Close Alert */}
+        {!canClose.canClose && tender?.status === "open" && (
+          <div className="mb-8 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⏳</span>
+              <div>
+                <p className="text-yellow-300 font-semibold">Tender Not Ready to Close</p>
+                <p className="text-white/60 text-sm">{canClose.reason}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Key Information Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -447,6 +587,45 @@ const TenderDetails = () => {
               <p className="text-white/80 leading-relaxed">{tender.description}</p>
             </div>
 
+            {/* Bids Section - Show all bids */}
+            {bids.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4 border-b border-white/10 pb-2">
+                  Submitted Bids ({bids.length})
+                </h2>
+                <div className="space-y-3">
+                  {bids.map((bid, index) => (
+                    <div 
+                      key={bid.id} 
+                      className={`p-4 rounded-lg border ${
+                        lowestBid && bid.id === lowestBid.bidId
+                          ? "bg-emerald-500/10 border-emerald-500/30"
+                          : "bg-white/5 border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Bid #{bid.id}</span>
+                          {lowestBid && bid.id === lowestBid.bidId && (
+                            <span className="px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-full font-medium">
+                              Lowest Bid 🏆
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-lg font-bold">{parseFloat(bid.amount).toFixed(4)} ETH</span>
+                      </div>
+                      <div className="text-sm text-white/60">
+                        <p className="font-mono">{bid.contractor}</p>
+                        {bid.proposal && (
+                          <p className="mt-2 text-white/80">{bid.proposal.slice(0, 100)}{bid.proposal.length > 100 ? "..." : ""}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Requirements */}
             {tender.requirements && tender.requirements.length > 0 && (
               <div className="bg-white/5 border border-white/10 rounded-lg p-6">
@@ -496,9 +675,20 @@ const TenderDetails = () => {
             <div className="bg-white/5 border border-white/10 rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Actions</h2>
               <div className="space-y-3">
-                <button className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors font-semibold">
-                  Submit Bid
-                </button>
+                {tender.status === "open" && !canClose.canClose && (
+                  <button className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors font-semibold">
+                    Submit Bid
+                  </button>
+                )}
+                {canClose.canClose && lowestBid && (
+                  <button
+                    onClick={handleCloseTenderAndAward}
+                    disabled={isClosing}
+                    className="w-full px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold disabled:opacity-50"
+                  >
+                    {isClosing ? "Processing..." : "Close & Award to Lowest Bidder"}
+                  </button>
+                )}
                 <button className="w-full px-6 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
                   Download Details
                 </button>
@@ -507,6 +697,29 @@ const TenderDetails = () => {
                 </button>
               </div>
             </div>
+
+            {/* Lowest Bid Info Card */}
+            {lowestBid && (
+              <div className="bg-gradient-to-br from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span>🏆</span> Current Lowest Bid
+                </h2>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Bid Amount</p>
+                    <p className="text-2xl font-bold text-emerald-300">{parseFloat(lowestBid.amount).toFixed(4)} ETH</p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Contractor</p>
+                    <p className="font-mono text-sm text-white/90 break-all">{lowestBid.contractor}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Bid ID</p>
+                    <p className="font-mono text-sm text-white/90">#{lowestBid.bidId}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Blockchain Verification */}
             {tender.blockchain_tx_hash && (
@@ -539,6 +752,16 @@ const TenderDetails = () => {
                   <span className="text-white/60">Tender ID:</span>
                   <span className="font-mono">{tender.id}</span>
                 </div>
+                {tender.blockchain_tender_id && (
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Blockchain ID:</span>
+                    <span className="font-mono">#{tender.blockchain_tender_id}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-white/60">Total Bids:</span>
+                  <span className="font-semibold">{bids.length}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-white/60">Created:</span>
                   <span>{new Date(tender.created_at).toLocaleDateString()}</span>
@@ -547,6 +770,14 @@ const TenderDetails = () => {
                   <div className="flex justify-between">
                     <span className="text-white/60">Last Updated:</span>
                     <span>{new Date(tender.updated_at).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {canClose.canClose && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center gap-2 text-emerald-300">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                      <span className="text-sm font-medium">Ready to Close</span>
+                    </div>
                   </div>
                 )}
               </div>

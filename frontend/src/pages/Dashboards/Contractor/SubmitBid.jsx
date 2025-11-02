@@ -101,7 +101,9 @@ const SubmitBid = () => {
 
     for (const file of documents) {
       const fileExt = file.name.split(".").pop();
-      const fileName = `${userResponse.user.id}/${tenderId}/${Date.now()}_${file.name}`;
+      const fileName = `${userResponse.user.id}/${tenderId}/${Date.now()}_${
+        file.name
+      }`;
 
       const { data, error: uploadError } = await supabase.storage
         .from("bid-documents")
@@ -143,7 +145,13 @@ const SubmitBid = () => {
       return;
     }
 
-    if (!bidAmount || !proposal || !companyName || !contactEmail || !contactPhone) {
+    if (
+      !bidAmount ||
+      !proposal ||
+      !companyName ||
+      !contactEmail ||
+      !contactPhone
+    ) {
       setError("Please fill all required fields");
       return;
     }
@@ -167,7 +175,8 @@ const SubmitBid = () => {
       }
 
       // Step 2: Get current user
-      const { data: userResponse, error: userError } = await supabase.auth.getUser();
+      const { data: userResponse, error: userError } =
+        await supabase.auth.getUser();
       if (userError || !userResponse?.user?.id) {
         throw new Error("You must be logged in to submit a bid.");
       }
@@ -185,7 +194,7 @@ const SubmitBid = () => {
         documents: documentUrls,
       });
 
-      // Step 3: Submit bid on blockchain (optional - only if tender is on blockchain)
+      // Step 3: Submit bid on blockchain
       let blockchainTxHash = null;
       if (tender.blockchain_tender_id && isInitialized) {
         try {
@@ -200,20 +209,30 @@ const SubmitBid = () => {
             blockchainTxHash = blockchainReceipt.hash;
             setStatus("Step 3/4: Saving bid details to database...");
           } else {
-            console.warn("Blockchain transaction failed, saving to database only");
-            setStatus("Step 3/4: Saving bid details to database (blockchain submission skipped)...");
+            console.warn(
+              "Blockchain transaction failed, saving to database only"
+            );
+            setStatus(
+              "Step 3/4: Saving bid details to database (blockchain submission skipped)..."
+            );
           }
         } catch (blockchainError) {
           console.error("Blockchain submission error:", blockchainError);
           // Continue with database submission even if blockchain fails
-          setStatus("Step 3/4: Saving bid details to database (blockchain submission skipped)...");
+          setStatus(
+            "Step 3/4: Saving bid details to database (blockchain submission skipped)..."
+          );
         }
       } else {
         // No blockchain tender ID or contract not initialized
         if (!tender.blockchain_tender_id) {
-          setStatus("Step 2/4: Saving bid to database (blockchain not available for this tender)...");
+          setStatus(
+            "Step 2/4: Saving bid to database (blockchain not available for this tender)..."
+          );
         } else {
-          setStatus("Step 2/4: Saving bid to database (blockchain connection not available)...");
+          setStatus(
+            "Step 2/4: Saving bid to database (blockchain connection not available)..."
+          );
         }
       }
 
@@ -223,7 +242,7 @@ const SubmitBid = () => {
         contractor_id: userResponse.user.id,
         bid_amount: parseFloat(bidAmount),
         proposal: fullProposal,
-        status: "SUBMITTED",
+        status: "submitted",
         blockchain_tx_hash: blockchainTxHash,
       };
 
@@ -235,15 +254,30 @@ const SubmitBid = () => {
 
       if (bidError) {
         console.error("Database error:", bidError);
-        // Check if it's a duplicate bid error
-        if (bidError.code === "23505") {
+
+        const isDuplicate =
+          bidError?.code === "23505" ||
+          (typeof bidError?.details === "string" &&
+            /already exists|duplicate key|unique constraint/i.test(
+              bidError.details
+            )) ||
+          (typeof bidError?.message === "string" &&
+            /already exists|duplicate key|unique constraint/i.test(
+              bidError.message
+            )) ||
+          bidError?.status === 409;
+
+        if (isDuplicate) {
+          // Throw a friendly, user-facing message that will be caught below
           throw new Error("You have already submitted a bid for this tender.");
         }
-        throw new Error("Failed to save bid to database. Transaction was successful on blockchain.");
+        throw new Error(
+          "Failed to save bid to database. Transaction was successful on blockchain."
+        );
       }
 
       setStatus("✅ Bid submitted successfully!");
-      
+
       // Wait a moment to show success message
       setTimeout(() => {
         navigate("/dashboard/contractor/bids");
@@ -309,15 +343,19 @@ const SubmitBid = () => {
           ← Back to All Tenders
         </button>
         <h1 className="text-3xl font-bold text-white mb-2">Submit Bid</h1>
-        <p className="text-white/60">Fill in the details to submit your bid for this tender</p>
+        <p className="text-white/60">
+          Fill in the details to submit your bid for this tender
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Tender Details */}
         <div className="lg:col-span-1">
           <div className="bg-white/5 border border-white/10 rounded-lg p-6 sticky top-8">
-            <h2 className="text-xl font-bold text-white mb-4">Tender Details</h2>
-            
+            <h2 className="text-xl font-bold text-white mb-4">
+              Tender Details
+            </h2>
+
             <div className="space-y-4">
               <div>
                 <label className="text-white/60 text-sm">Title</label>
@@ -326,12 +364,18 @@ const SubmitBid = () => {
 
               <div>
                 <label className="text-white/60 text-sm">Category</label>
-                <p className="text-white font-medium">{tender.category || "N/A"}</p>
+                <p className="text-white font-medium">
+                  {tender.category || "N/A"}
+                </p>
               </div>
 
               <div>
-                <label className="text-white/60 text-sm">Estimated Budget</label>
-                <p className="text-white font-medium">{formatCurrency(tender.estimated_budget)}</p>
+                <label className="text-white/60 text-sm">
+                  Estimated Budget
+                </label>
+                <p className="text-white font-medium">
+                  {formatCurrency(tender.estimated_budget)}
+                </p>
               </div>
 
               <div>
@@ -343,13 +387,17 @@ const SubmitBid = () => {
 
               <div>
                 <label className="text-white/60 text-sm">Status</label>
-                <p className="text-white font-medium capitalize">{tender.status?.toLowerCase() || "N/A"}</p>
+                <p className="text-white font-medium capitalize">
+                  {tender.status?.toLowerCase() || "N/A"}
+                </p>
               </div>
 
               {tender.description && (
                 <div>
                   <label className="text-white/60 text-sm">Description</label>
-                  <p className="text-white text-sm mt-1">{tender.description}</p>
+                  <p className="text-white text-sm mt-1">
+                    {tender.description}
+                  </p>
                 </div>
               )}
             </div>
@@ -373,14 +421,22 @@ const SubmitBid = () => {
 
             {tender && !tender.blockchain_tender_id && (
               <div className="mb-6 p-4 bg-yellow-600/20 border border-yellow-600/50 rounded-lg text-yellow-200">
-                <p className="font-medium">⚠️ Note: This tender is not on blockchain yet.</p>
-                <p className="text-sm mt-1">Your bid will be saved to the database. Blockchain submission will be skipped.</p>
+                <p className="font-medium">
+                  ⚠️ Note: This tender is not on blockchain yet.
+                </p>
+                <p className="text-sm mt-1">
+                  Your bid will be saved to the database. Blockchain submission
+                  will be skipped.
+                </p>
               </div>
             )}
 
             {!isConnected && tender.blockchain_tender_id && (
               <div className="mb-6 p-4 bg-yellow-600/20 border border-yellow-600/50 rounded-lg text-yellow-200">
-                <p className="mb-2">Please connect your wallet to submit a bid (required for blockchain submission)</p>
+                <p className="mb-2">
+                  Please connect your wallet to submit a bid (required for
+                  blockchain submission)
+                </p>
                 <button
                   onClick={connectWallet}
                   className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-white/90"
@@ -392,8 +448,13 @@ const SubmitBid = () => {
 
             {!isConnected && !tender.blockchain_tender_id && (
               <div className="mb-6 p-4 bg-blue-600/20 border border-blue-600/50 rounded-lg text-blue-200">
-                <p className="mb-2">Wallet connection is optional for this tender (blockchain not available)</p>
-                <p className="text-sm">You can still submit your bid to the database.</p>
+                <p className="mb-2">
+                  Wallet connection is optional for this tender (blockchain not
+                  available)
+                </p>
+                <p className="text-sm">
+                  You can still submit your bid to the database.
+                </p>
               </div>
             )}
 
@@ -405,7 +466,7 @@ const SubmitBid = () => {
                 </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.1"
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
                   placeholder="Enter your bid amount"
@@ -436,7 +497,9 @@ const SubmitBid = () => {
                 </div>
 
                 <div>
-                  <label className="block text-white font-medium mb-2">GST Number</label>
+                  <label className="block text-white font-medium mb-2">
+                    GST Number
+                  </label>
                   <input
                     type="text"
                     value={gstNumber}
@@ -450,7 +513,9 @@ const SubmitBid = () => {
               {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-white font-medium mb-2">Contact Person</label>
+                  <label className="block text-white font-medium mb-2">
+                    Contact Person
+                  </label>
                   <input
                     type="text"
                     value={contactPerson}
@@ -491,7 +556,9 @@ const SubmitBid = () => {
 
               {/* Additional Information */}
               <div>
-                <label className="block text-white font-medium mb-2">Company Address</label>
+                <label className="block text-white font-medium mb-2">
+                  Company Address
+                </label>
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -502,7 +569,9 @@ const SubmitBid = () => {
               </div>
 
               <div>
-                <label className="block text-white font-medium mb-2">Relevant Experience</label>
+                <label className="block text-white font-medium mb-2">
+                  Relevant Experience
+                </label>
                 <textarea
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
@@ -515,7 +584,8 @@ const SubmitBid = () => {
               {/* Proposal */}
               <div>
                 <label className="block text-white font-medium mb-2">
-                  Proposal/Technical Details <span className="text-red-500">*</span>
+                  Proposal/Technical Details{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={proposal}
@@ -533,7 +603,8 @@ const SubmitBid = () => {
                   Upload Documents
                 </label>
                 <p className="text-white/60 text-sm mb-2">
-                  Upload necessary documents (Company registration, Certificates, Previous work samples, etc.)
+                  Upload necessary documents (Company registration,
+                  Certificates, Previous work samples, etc.)
                 </p>
                 <input
                   type="file"
@@ -542,7 +613,7 @@ const SubmitBid = () => {
                   className="w-full px-4 py-3 border border-white/20 bg-white/5 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-white file:text-black hover:file:bg-white/90"
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 />
-                
+
                 {documents.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {documents.map((doc, index) => (
@@ -576,7 +647,12 @@ const SubmitBid = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (tender.blockchain_tender_id && !isConnected && isInitialized)}
+                  disabled={
+                    submitting ||
+                    (tender.blockchain_tender_id &&
+                      !isConnected &&
+                      isInitialized)
+                  }
                   className="flex-1 px-6 py-3 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? "Submitting Bid..." : "Submit Bid"}
@@ -591,4 +667,3 @@ const SubmitBid = () => {
 };
 
 export default SubmitBid;
-

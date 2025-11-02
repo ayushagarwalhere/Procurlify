@@ -68,7 +68,6 @@ const CreateTender = () => {
       //   throw new Error("Bid end time must be after start time");
       // }
 
-      // Step 1: Create tender on blockchain
       setStatus("Step 1/3: Deploying tender smart contract...");
       const blockchainReceipt = await createTenderOnChain(
         title,
