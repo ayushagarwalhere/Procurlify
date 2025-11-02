@@ -241,7 +241,7 @@ const SubmitBid = () => {
             errorMessage += "Unknown error";
           }
           
-          alert(errorMessage + "\n\nYour bid will be saved to database only. Please contact admin.");
+         // alert(errorMessage + "\n\nYour bid will be saved to database only. Please contact admin.");
           
           // Continue with database submission even if blockchain fails
           setStatus(

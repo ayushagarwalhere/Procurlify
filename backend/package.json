@@ -27,6 +27,7 @@
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.1.1",
     "@prisma/client": "^6.18.0",
+    "@supabase/supabase-js": "^2.78.0",
     "aptos": "^1.22.1",
     "dotenv": "^17.2.3"
   },
