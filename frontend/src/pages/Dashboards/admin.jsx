@@ -4,6 +4,7 @@ import { useWallet } from "../../hooks/useWallet";
 import { supabase } from "../../lib/supabase";
 import { useContract } from "../../hooks/useContract";
 import { ethers } from "ethers";
+import TenderAutoCloser from "../../components/TenderAutoCloser";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -21,8 +22,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tendersReadyToClose, setTendersReadyToClose] = useState([]);
+  const [closingTenderId, setClosingTenderId] = useState(null);
   
-  const { canCloseTender, getLowestBid, isInitialized } = useContract();
+  const { canCloseTender, getLowestBid, closeTenderAndAwardLowestBid, isInitialized } = useContract();
 
   useEffect(() => {
     const fetchTenders = async () => {
@@ -100,8 +102,38 @@ const AdminDashboard = () => {
     checkTendersStatus();
   }, [isInitialized, tenders, canCloseTender, getLowestBid]);
 
+  const handleQuickClose = async (tender) => {
+    if (!confirm(`Close tender "${tender.title}" and award to lowest bidder?`)) {
+      return;
+    }
+
+    setClosingTenderId(tender.id);
+    try {
+      const startDate = new Date();
+      const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+      await closeTenderAndAwardLowestBid(
+        tender.blockchain_tender_id,
+        startDate,
+        endDate
+      );
+
+      alert("Tender closed and awarded successfully!");
+      
+      // Refresh tenders
+      window.location.reload();
+    } catch (error) {
+      console.error("Error closing tender:", error);
+      alert("Failed to close tender: " + error.message);
+    } finally {
+      setClosingTenderId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* Auto-close tenders when bidEndTime passes */}
+      <TenderAutoCloser />
       {/* Header */}
       <header className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -159,12 +191,21 @@ const AdminDashboard = () => {
                         <span className="text-white/60">Budget: ₹{tender.estimated_budget}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => navigate(`/tender/${tender.id}`)}
-                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
-                    >
-                      Close & Award
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleQuickClose(tender)}
+                        disabled={closingTenderId === tender.id}
+                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium disabled:opacity-50"
+                      >
+                        {closingTenderId === tender.id ? "Closing..." : "Quick Close"}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/tender/${tender.id}`)}
+                        className="px-4 py-2 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-colors font-medium"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -176,9 +217,15 @@ const AdminDashboard = () => {
         <div className="flex gap-4 mb-8">
           <button
             onClick={() => navigate("/tender/create")}
-            className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
+            className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors font-medium"
           >
-            Create New Tender
+            📝 Create New Tender
+          </button>
+          <button
+            onClick={() => navigate("/dashboard/admin/payments")}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors font-medium"
+          >
+            💰 Payment Management
           </button>
         </div>
 

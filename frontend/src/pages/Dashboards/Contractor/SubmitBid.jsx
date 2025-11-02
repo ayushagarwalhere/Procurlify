@@ -198,6 +198,14 @@ const SubmitBid = () => {
       let blockchainTxHash = null;
       if (tender.blockchain_tender_id && isInitialized) {
         try {
+          console.log("=== Blockchain Bid Submission ===");
+          console.log("Tender Blockchain ID:", tender.blockchain_tender_id);
+          console.log("Bid Amount:", bidAmount);
+          console.log("Proposal:", fullProposal);
+          console.log("Contract Initialized:", isInitialized);
+          console.log("Wallet Connected:", isConnected);
+          console.log("Account:", account);
+          
           setStatus("Step 2/4: Approving transaction in MetaMask...");
           const blockchainReceipt = await submitBidOnChain(
             tender.blockchain_tender_id,
@@ -205,19 +213,36 @@ const SubmitBid = () => {
             fullProposal
           );
 
+          console.log("✅ Blockchain receipt:", blockchainReceipt);
+
           if (blockchainReceipt && blockchainReceipt.hash) {
             blockchainTxHash = blockchainReceipt.hash;
+            console.log("✅ Blockchain TX Hash:", blockchainTxHash);
             setStatus("Step 3/4: Saving bid details to database...");
           } else {
-            console.warn(
-              "Blockchain transaction failed, saving to database only"
-            );
+            console.warn("⚠️ Blockchain transaction failed, saving to database only");
             setStatus(
               "Step 3/4: Saving bid details to database (blockchain submission skipped)..."
             );
           }
         } catch (blockchainError) {
-          console.error("Blockchain submission error:", blockchainError);
+          console.error("❌ Blockchain submission error:", blockchainError);
+          console.error("Error code:", blockchainError.code);
+          console.error("Error message:", blockchainError.message);
+          console.error("Error reason:", blockchainError.reason);
+          
+          // Show user-friendly error
+          let errorMessage = "Blockchain submission failed: ";
+          if (blockchainError.reason) {
+            errorMessage += blockchainError.reason;
+          } else if (blockchainError.message) {
+            errorMessage += blockchainError.message;
+          } else {
+            errorMessage += "Unknown error";
+          }
+          
+          alert(errorMessage + "\n\nYour bid will be saved to database only. Please contact admin.");
+          
           // Continue with database submission even if blockchain fails
           setStatus(
             "Step 3/4: Saving bid details to database (blockchain submission skipped)..."
@@ -225,6 +250,10 @@ const SubmitBid = () => {
         }
       } else {
         // No blockchain tender ID or contract not initialized
+        console.warn("⚠️ Blockchain submission skipped:");
+        console.warn("- blockchain_tender_id:", tender.blockchain_tender_id);
+        console.warn("- isInitialized:", isInitialized);
+        
         if (!tender.blockchain_tender_id) {
           setStatus(
             "Step 2/4: Saving bid to database (blockchain not available for this tender)..."

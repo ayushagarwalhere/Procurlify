@@ -51,7 +51,9 @@ const MyBids = () => {
 
         // Calculate stats
         const totalBids = bidsWithTenders?.length || 0;
-        const wonBids = bidsWithTenders?.filter((b) => b.status === "ACCEPTED").length || 0;
+        const wonBids = bidsWithTenders?.filter(
+          (b) => b.status === "ACCEPTED" || b.tender?.status === "awarded" || b.tender?.status === "completed"
+        ).length || 0;
         const underEvaluation =
           bidsWithTenders?.filter((b) => b.status === "SUBMITTED").length || 0;
 
@@ -117,14 +119,24 @@ const MyBids = () => {
   };
 
   const getStatusColor = (status) => {
-    const colors = {
-      SUBMITTED: "bg-blue-500/20 text-blue-300",
-      ACCEPTED: "bg-white/20 text-white",
-      REJECTED: "bg-red-500/20 text-red-300",
-      WITHDRAWN: "bg-white/10 text-white/60",
-      EVALUATED: "bg-white/20 text-white", // For display purposes
-    };
-    return colors[status] || "bg-white/10 text-white/60";
+    switch (status?.toUpperCase()) {
+      case "ACCEPTED":
+        return "bg-green-600 text-white";
+      case "REJECTED":
+        return "bg-red-600 text-white";
+      case "SUBMITTED":
+        return "bg-blue-600 text-white";
+      case "WITHDRAWN":
+        return "bg-gray-600 text-white";
+      default:
+        return "bg-gray-600 text-white";
+    }
+  };
+
+  const isWinningBid = (bid) => {
+    return bid.status === "ACCEPTED" || 
+           bid.tender?.status === "awarded" || 
+           bid.tender?.status === "completed";
   };
 
   return (
@@ -198,21 +210,38 @@ const MyBids = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredBids.map((bid) => {
-            const tender = bid.tender || {};
-            const displayStatus = bid.status === "ACCEPTED" ? "EVALUATED" : bid.status;
+          <table className="w-full text-white">
+            <thead>
+              <tr>
+                <th className="px-6 py-4 text-white font-medium">Tender Title</th>
+                <th className="px-6 py-4 text-white font-medium">Status</th>
+                <th className="px-6 py-4 text-white font-medium">Bid Amount</th>
+                <th className="px-6 py-4 text-white font-medium">Submitted</th>
+                <th className="px-6 py-4 text-white font-medium">Score</th>
+                <th className="px-6 py-4 text-white font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBids.map((bid) => {
+                const isWinner = isWinningBid(bid);
+                const tender = bid.tender || {};
+                const displayStatus = bid.status === "ACCEPTED" ? "EVALUATED" : bid.status;
 
-            return (
-              <div
-                key={bid.id}
-                className="bg-white/5 border border-white/10 rounded-lg p-6 shadow-sm hover:border-white/20 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-bold text-white">
-                        {tender.title || "N/A"}
-                      </h3>
+                return (
+                  <tr key={bid.id} className={`hover:bg-white/5 transition-colors ${
+                    isWinner ? "bg-yellow-500/5" : ""
+                  }`}>
+                    <td className="px-6 py-4 text-white font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{tender.title || "N/A"}</span>
+                        {isWinner && (
+                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full font-medium">
+                            🏆 WON
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-white font-medium">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
                           displayStatus
@@ -220,46 +249,39 @@ const MyBids = () => {
                       >
                         {displayStatus.charAt(0) + displayStatus.slice(1).toLowerCase()}
                       </span>
-                    </div>
-                    {tender.category && (
-                      <p className="text-sm text-white/60">{tender.category}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Details Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white">
+                    </td>
+                    <td className="px-6 py-4 text-white font-medium">
                       {formatCurrency(bid.bid_amount)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white">
-                      Submitted {formatDate(bid.created_at)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white">
-                      Score: {bid.status === "ACCEPTED" ? "88.5/100" : "Pending"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Button */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => navigate(`/tender/${tender.id}`)}
-                    className="px-6 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
-                  >
-                    View Tender
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                    <td className="px-6 py-4 text-white font-medium">
+                      {formatDate(bid.created_at)}
+                    </td>
+                    <td className="px-6 py-4 text-white font-medium">
+                      {bid.status === "ACCEPTED" ? "88.5/100" : "Pending"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        {isWinner && (
+                          <button
+                            onClick={() => navigate(`/dashboard/contractor/contract/${bid.tender?.blockchain_tender_id || bid.tender_id}`)}
+                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            View Contract
+                          </button>
+                        )}
+                        <button
+                          onClick={() => navigate(`/tender/${bid.tender_id}`)}
+                          className="px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-medium transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

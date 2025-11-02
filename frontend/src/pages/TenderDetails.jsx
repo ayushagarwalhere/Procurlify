@@ -15,6 +15,8 @@ const TenderDetails = () => {
   const [canClose, setCanClose] = useState({ canClose: false, reason: "" });
   const [isClosing, setIsClosing] = useState(false);
   const [bids, setBids] = useState([]);
+  const [winnerInfo, setWinnerInfo] = useState(null);
+  const [contractDetails, setContractDetails] = useState(null);
   
   const { 
     closeTenderAndAwardLowestBid, 
@@ -38,9 +40,6 @@ const TenderDetails = () => {
         if (error) throw error;
 
         setTender(data);
-        
-        // Generate tracking timeline based on tender data
-        generateTrackingTimeline(data);
       } catch (error) {
         console.error("Failed to fetch tender details:", error);
       } finally {
@@ -54,43 +53,97 @@ const TenderDetails = () => {
   // Fetch blockchain data for tender
   useEffect(() => {
     const fetchBlockchainData = async () => {
-      if (!isInitialized || !tender?.blockchain_tender_id) return;
+      console.log("=== Fetching Blockchain Data ===");
+      console.log("isInitialized:", isInitialized);
+      console.log("blockchain_tender_id:", tender?.blockchain_tender_id);
+      console.log("tender status:", tender?.status);
+
+      if (!isInitialized) {
+        console.log("⚠️ Contract not initialized yet");
+        return;
+      }
+
+      if (!tender?.blockchain_tender_id) {
+        console.log("⚠️ No blockchain_tender_id found");
+        return;
+      }
 
       try {
-        // Check if tender can be closed
-        const closeStatus = await canCloseTender(tender.blockchain_tender_id);
-        setCanClose(closeStatus);
-
-        // Get lowest bid if tender is open
-        if (tender.status === "open" || tender.status === "in_progress") {
-          const lowest = await getLowestBid(tender.blockchain_tender_id);
-          if (lowest.lowestBidId > 0) {
-            setLowestBid({
-              bidId: lowest.lowestBidId.toString(),
-              amount: ethers.formatEther(lowest.lowestBidAmount),
-              contractor: lowest.contractor
-            });
-          }
-
-          // Fetch all bids
-          const bidIds = await getTenderBids(tender.blockchain_tender_id);
+        // Always fetch all bids first
+        console.log("📋 Fetching bids for tender ID:", tender.blockchain_tender_id);
+        const bidIds = await getTenderBids(tender.blockchain_tender_id);
+        console.log("📋 Bid IDs received:", bidIds);
+        
+        if (bidIds && bidIds.length > 0) {
+          console.log(`✅ Found ${bidIds.length} bid(s), fetching details...`);
           const bidPromises = bidIds.map(id => getBid(id));
           const bidsData = await Promise.all(bidPromises);
-          setBids(bidsData.map((bid, idx) => ({
+          console.log("📊 Bids data:", bidsData);
+          
+          const formattedBids = bidsData.map((bid, idx) => ({
             id: bidIds[idx].toString(),
             contractor: bid.contractor,
             amount: ethers.formatEther(bid.bidAmount),
             proposal: bid.proposal,
             status: bid.status
-          })));
+          }));
+          
+          console.log("✅ Formatted bids:", formattedBids);
+          setBids(formattedBids);
+        } else {
+          console.log("⚠️ No bids found for this tender");
+          setBids([]);
         }
+
+        // Get lowest bid (potential winner)
+        console.log("🏆 Fetching lowest bid...");
+        const lowest = await getLowestBid(tender.blockchain_tender_id);
+        console.log("🏆 Lowest bid result:", lowest);
+        
+        if (lowest.lowestBidId > 0) {
+          const lowestBidInfo = {
+            bidId: lowest.lowestBidId.toString(),
+            amount: ethers.formatEther(lowest.lowestBidAmount),
+            contractor: lowest.contractor
+          };
+          console.log("✅ Lowest bid info:", lowestBidInfo);
+
+          // If tender is awarded or completed, this is the winner
+          if (tender.status === "awarded" || tender.status === "completed") {
+            console.log("🎉 WINNER DETECTED:", lowestBidInfo);
+            setWinnerInfo(lowestBidInfo);
+          } 
+          // If tender is open, this is just the current lowest bid
+          else if (tender.status === "open" || tender.status === "in_progress") {
+            console.log("📊 Setting as current lowest bid");
+            setLowestBid(lowestBidInfo);
+          }
+        } else {
+          console.log("⚠️ No valid lowest bid found (lowestBidId = 0)");
+        }
+
+        // Check if tender can be closed
+        console.log("🔍 Checking if tender can be closed...");
+        const closeStatus = await canCloseTender(tender.blockchain_tender_id);
+        console.log("🔍 Can close result:", closeStatus);
+        setCanClose(closeStatus);
+        
+        console.log("=== Blockchain Data Fetch Complete ===");
       } catch (error) {
-        console.error("Error fetching blockchain data:", error);
+        console.error("❌ Error fetching blockchain data:", error);
+        console.error("Error details:", error.message);
       }
     };
 
     fetchBlockchainData();
-  }, [isInitialized, tender, canCloseTender, getLowestBid, getTenderBids, getBid]);
+  }, [isInitialized, tender?.blockchain_tender_id, tender?.status]);
+
+  // Regenerate timeline when tender, bids, or winner info changes
+  useEffect(() => {
+    if (tender) {
+      generateTrackingTimeline(tender);
+    }
+  }, [tender, bids, winnerInfo]);
 
   const generateTrackingTimeline = (tenderData) => {
     const timeline = [];
@@ -132,41 +185,65 @@ const TenderDetails = () => {
       icon: "🔒"
     });
 
-    // Bid Evaluation
+    // Bid Evaluation - Check if bids exist and closing date passed
+    const hasBids = bids && bids.length > 0;
+    const bidsClosed = closingDate <= currentDate;
+    const isAwarded = tenderData.status === "awarded" || tenderData.status === "completed";
+    
     timeline.push({
       id: 4,
       title: "Bid Evaluation",
-      description: "Reviewing and evaluating submitted bids",
-      date: new Date(closingDate.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days after closing
-      status: tenderData.status === "under_review" || tenderData.status === "completed" ? "completed" : 
-              closingDate <= currentDate ? "in_progress" : "pending",
+      description: hasBids ? `${bids.length} bid(s) received and under evaluation` : "Awaiting bid submissions",
+      date: new Date(closingDate.getTime() + 1 * 24 * 60 * 60 * 1000), // 1 day after closing
+      status: isAwarded ? "completed" : 
+              (bidsClosed && hasBids) ? "in_progress" : 
+              bidsClosed ? "completed" : "pending",
       blockchainHash: tenderData.evaluation_hash,
-      icon: "⚖️"
+      icon: "⚖️",
+      bidsCount: bids?.length || 0
     });
 
-    // Winner Selection
+    // Winner Selection - Check if tender is awarded
+    const winnerSelected = isAwarded && winnerInfo;
+    
     timeline.push({
       id: 5,
       title: "Winner Selection",
-      description: "Bid winner selected and contract awarded",
-      date: new Date(closingDate.getTime() + 14 * 24 * 60 * 60 * 1000), // 14 days after closing
-      status: tenderData.winner_id ? "completed" : "pending",
+      description: winnerSelected ? 
+        `Winner: ${winnerInfo.contractor.slice(0, 10)}...${winnerInfo.contractor.slice(-8)}` : 
+        "Awaiting winner announcement",
+      date: winnerSelected ? currentDate : new Date(closingDate.getTime() + 2 * 24 * 60 * 60 * 1000),
+      status: winnerSelected ? "completed" : 
+              (bidsClosed && hasBids) ? "in_progress" : "pending",
       blockchainHash: tenderData.winner_selection_hash,
       icon: "🏆",
-      winnerInfo: tenderData.winner_id ? {
-        contractorName: tenderData.winner_name || "Selected Contractor",
-        bidAmount: tenderData.winning_bid_amount
+      winnerInfo: winnerSelected ? {
+        contractorAddress: winnerInfo.contractor,
+        bidAmount: winnerInfo.amount
       } : null
     });
 
+    // Contract Creation - If tender is awarded
+    if (isAwarded) {
+      timeline.push({
+        id: 6,
+        title: "Contract Created",
+        description: "Contract created with 5 milestones (20% each)",
+        date: currentDate,
+        status: "completed",
+        blockchainHash: tenderData.contract_hash,
+        icon: "📄"
+      });
+    }
+
     // Work Progress Tracking (if winner selected)
-    if (tenderData.winner_id) {
+    if (isAwarded) {
       const workStartDate = new Date(closingDate.getTime() + 21 * 24 * 60 * 60 * 1000);
       
       timeline.push({
-        id: 6,
+        id: 7,
         title: "Work Started",
-        description: "Construction/project work commenced",
+        description: "Contractor begins project execution",
         date: workStartDate,
         status: tenderData.work_status === "started" || tenderData.work_status === "in_progress" || 
                 tenderData.work_status === "completed" ? "completed" : "pending",
@@ -190,14 +267,25 @@ const TenderDetails = () => {
         });
       }
 
+      // Milestone Progress
+      timeline.push({
+        id: 8,
+        title: "Milestone Progress",
+        description: "Contractor completing project milestones",
+        date: new Date(workStartDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+        status: tenderData.work_status === "in_progress" || tenderData.work_status === "completed" ? "in_progress" : "pending",
+        blockchainHash: tenderData.milestone_hash,
+        icon: "📊"
+      });
+
       // Work Completion
       timeline.push({
-        id: 7,
+        id: 9,
         title: "Work Completed",
-        description: "Project completed and ready for final inspection",
+        description: "All milestones completed, payment processed",
         date: tenderData.completion_date ? new Date(tenderData.completion_date) : 
               new Date(workStartDate.getTime() + 90 * 24 * 60 * 60 * 1000), // 90 days after start
-        status: tenderData.work_status === "completed" ? "completed" : "pending",
+        status: tenderData.work_status === "completed" || tenderData.status === "completed" ? "completed" : "pending",
         blockchainHash: tenderData.completion_hash,
         icon: "✅"
       });
@@ -326,8 +414,64 @@ const TenderDetails = () => {
           <p className="text-white/60 text-lg">{tender.category}</p>
         </div>
 
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+            <p className="text-blue-300 font-semibold mb-2">Debug Info:</p>
+            <div className="space-y-1 text-white/80">
+              <p>Tender Status: <span className="font-mono text-yellow-300">{tender.status}</span></p>
+              <p>Blockchain ID: <span className="font-mono text-yellow-300">{tender.blockchain_tender_id || 'Not set'}</span></p>
+              <p>Winner Info: <span className="font-mono text-yellow-300">{winnerInfo ? 'Set ✓' : 'Not set ✗'}</span></p>
+              <p>Lowest Bid: <span className="font-mono text-yellow-300">{lowestBid ? 'Set ✓' : 'Not set ✗'}</span></p>
+              <p>Bids Count: <span className="font-mono text-yellow-300">{bids.length}</span></p>
+              <p>Can Close: <span className="font-mono text-yellow-300">{canClose.canClose ? 'Yes ✓' : 'No ✗'}</span></p>
+              {winnerInfo && (
+                <p>Winner Address: <span className="font-mono text-emerald-300">{winnerInfo.contractor}</span></p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Winner Announcement - Show if tender is awarded */}
+        {/* Check: tender.status must be 'awarded' or 'completed' AND winnerInfo must exist */}
+        {(tender.status === "awarded" || tender.status === "completed") && winnerInfo && (
+          <div className="mb-8 bg-gradient-to-r from-yellow-500/20 to-emerald-500/20 border border-yellow-500/30 rounded-lg p-8">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🏆</div>
+              <h2 className="text-3xl font-bold text-yellow-300 mb-2">Winner Announced!</h2>
+              <p className="text-white/80 mb-6">This tender has been awarded to the winning contractor</p>
+              
+              <div className="bg-black/30 rounded-lg p-6 max-w-2xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-white/60 text-sm mb-2">Winning Contractor</p>
+                    <p className="font-mono text-emerald-300 text-lg break-all">
+                      {winnerInfo.contractor.slice(0, 10)}...{winnerInfo.contractor.slice(-8)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm mb-2">Winning Bid Amount</p>
+                    <p className="text-3xl font-bold text-emerald-300">
+                      {parseFloat(winnerInfo.amount).toFixed(4)} ETH
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <div className="flex items-center justify-center gap-2 text-emerald-300">
+                    <span className="text-2xl">✓</span>
+                    <span className="font-semibold">Contract Created with 5 Milestones</span>
+                  </div>
+                  <p className="text-white/60 text-sm mt-2">
+                    The contractor can now view their contract and start completing milestones
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Lowest Bid Alert - Show if tender is open and past deadline */}
-        {lowestBid && canClose.canClose && (
+        {lowestBid && canClose.canClose && tender.status === "open" && (
           <div className="mb-8 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 rounded-lg p-6">
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -354,6 +498,19 @@ const TenderDetails = () => {
               >
                 {isClosing ? "Closing..." : "Close & Award Tender"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tender Closed - No Winner Yet */}
+        {tender.status === "closed" && !winnerInfo && (
+          <div className="mb-8 bg-red-500/10 border border-red-500/30 rounded-lg p-6">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🔒</span>
+              <div>
+                <p className="text-red-300 font-semibold text-lg">Tender Closed</p>
+                <p className="text-white/60 text-sm">This tender has been closed. Winner will be announced soon.</p>
+              </div>
             </div>
           </div>
         )}
@@ -587,6 +744,36 @@ const TenderDetails = () => {
               <p className="text-white/80 leading-relaxed">{tender.description}</p>
             </div>
 
+            {/* Winner Details Card - For Awarded Tenders */}
+            {(tender.status === "awarded" || tender.status === "completed") && winnerInfo && (
+              <div className="bg-gradient-to-br from-yellow-500/10 to-emerald-500/10 border border-yellow-500/30 rounded-lg p-6 mb-6">
+                <h2 className="text-xl font-semibold mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+                  <span>🏆</span> Winning Bid Details
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Contractor Address</p>
+                    <p className="font-mono text-emerald-300 break-all">{winnerInfo.contractor}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Winning Bid Amount</p>
+                    <p className="text-2xl font-bold text-emerald-300">{parseFloat(winnerInfo.amount).toFixed(4)} ETH</p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm mb-1">Bid ID</p>
+                    <p className="font-mono text-white/90">#{winnerInfo.bidId}</p>
+                  </div>
+                  <div className="pt-4 border-t border-white/10">
+                    <div className="flex items-center gap-2 text-emerald-300 mb-2">
+                      <span>✓</span>
+                      <span className="font-semibold">Contract Status: Active</span>
+                    </div>
+                    <p className="text-white/60 text-sm">5 milestones created (20% payment each)</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bids Section - Show all bids */}
             {bids.length > 0 && (
               <div className="bg-white/5 border border-white/10 rounded-lg p-6">
@@ -594,11 +781,17 @@ const TenderDetails = () => {
                   Submitted Bids ({bids.length})
                 </h2>
                 <div className="space-y-3">
-                  {bids.map((bid, index) => (
+                  {bids.map((bid, index) => {
+                    const isWinner = winnerInfo && bid.contractor.toLowerCase() === winnerInfo.contractor.toLowerCase();
+                    const isLowest = lowestBid && bid.id === lowestBid.bidId;
+                    
+                    return (
                     <div 
                       key={bid.id} 
                       className={`p-4 rounded-lg border ${
-                        lowestBid && bid.id === lowestBid.bidId
+                        isWinner
+                          ? "bg-yellow-500/10 border-yellow-500/30"
+                          : isLowest
                           ? "bg-emerald-500/10 border-emerald-500/30"
                           : "bg-white/5 border-white/10"
                       }`}
@@ -606,9 +799,19 @@ const TenderDetails = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">Bid #{bid.id}</span>
-                          {lowestBid && bid.id === lowestBid.bidId && (
+                          {isWinner && (
+                            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full font-medium">
+                              🏆 WINNER
+                            </span>
+                          )}
+                          {!isWinner && isLowest && (
                             <span className="px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-full font-medium">
-                              Lowest Bid 🏆
+                              Lowest Bid
+                            </span>
+                          )}
+                          {bid.status === 1 && (
+                            <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full font-medium">
+                              Accepted
                             </span>
                           )}
                         </div>
@@ -621,7 +824,8 @@ const TenderDetails = () => {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -671,55 +875,7 @@ const TenderDetails = () => {
 
           {/* Right Column - Actions and Additional Info */}
           <div className="space-y-6">
-            {/* Actions */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Actions</h2>
-              <div className="space-y-3">
-                {tender.status === "open" && !canClose.canClose && (
-                  <button className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors font-semibold">
-                    Submit Bid
-                  </button>
-                )}
-                {canClose.canClose && lowestBid && (
-                  <button
-                    onClick={handleCloseTenderAndAward}
-                    disabled={isClosing}
-                    className="w-full px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold disabled:opacity-50"
-                  >
-                    {isClosing ? "Processing..." : "Close & Award to Lowest Bidder"}
-                  </button>
-                )}
-                <button className="w-full px-6 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-                  Download Details
-                </button>
-                <button className="w-full px-6 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-                  Contact Organization
-                </button>
-              </div>
-            </div>
-
-            {/* Lowest Bid Info Card */}
-            {lowestBid && (
-              <div className="bg-gradient-to-br from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-lg p-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span>🏆</span> Current Lowest Bid
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-white/60 text-sm mb-1">Bid Amount</p>
-                    <p className="text-2xl font-bold text-emerald-300">{parseFloat(lowestBid.amount).toFixed(4)} ETH</p>
-                  </div>
-                  <div>
-                    <p className="text-white/60 text-sm mb-1">Contractor</p>
-                    <p className="font-mono text-sm text-white/90 break-all">{lowestBid.contractor}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/60 text-sm mb-1">Bid ID</p>
-                    <p className="font-mono text-sm text-white/90">#{lowestBid.bidId}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            
 
             {/* Blockchain Verification */}
             {tender.blockchain_tx_hash && (

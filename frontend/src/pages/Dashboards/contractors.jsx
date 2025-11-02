@@ -7,6 +7,7 @@ import MyBids from "./Contractor/MyBids";
 import PriceIntelligence from "./Contractor/PriceIntelligence";
 import SubmitBid from "./Contractor/SubmitBid";
 import { useWallet } from "../../hooks/useWallet";
+import PaymentTracking from "./Contractor/PaymentTracking";
 
 const ContractorDashboard = () => {
   const navigate = useNavigate();
@@ -81,6 +82,7 @@ const ContractorDashboard = () => {
             <Route path="projects" element={<MyProjects />} />
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="intelligence" element={<PriceIntelligence />} />
+            <Route path="payment-tracking" element={<PaymentTracking />} />
           </Routes>
         </main>
       </div>
