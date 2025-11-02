@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
+import { useContract } from "../../../hooks/useContract";
+import { ethers } from "ethers";
 
 const AvailableTenders = () => {
   const navigate = useNavigate();
@@ -8,6 +10,9 @@ const AvailableTenders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [lowestBids, setLowestBids] = useState({});
+  
+  const { getLowestBid, isInitialized } = useContract();
 
   useEffect(() => {
     const fetchTenders = async () => {
@@ -47,6 +52,35 @@ const AvailableTenders = () => {
 
     fetchTenders();
   }, []);
+
+  // Fetch lowest bids for open tenders
+  useEffect(() => {
+    const fetchLowestBids = async () => {
+      if (!isInitialized || tenders.length === 0) return;
+
+      const bidsMap = {};
+      
+      for (const tender of tenders) {
+        if (tender.blockchain_tender_id && tender.status === "open") {
+          try {
+            const lowestBid = await getLowestBid(tender.blockchain_tender_id);
+            if (lowestBid.lowestBidId > 0) {
+              bidsMap[tender.id] = {
+                amount: ethers.formatEther(lowestBid.lowestBidAmount),
+                contractor: lowestBid.contractor
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching lowest bid for tender ${tender.id}:`, error);
+          }
+        }
+      }
+      
+      setLowestBids(bidsMap);
+    };
+
+    fetchLowestBids();
+  }, [isInitialized, tenders, getLowestBid]);
 
   const filteredTenders = tenders.filter((tender) => {
     const matchesSearch =
@@ -110,6 +144,21 @@ const AvailableTenders = () => {
     }
   };
 
+  const getTimeRemaining = (endDate) => {
+    if (!endDate) return "N/A";
+    const now = new Date();
+    const end = new Date(endDate);
+    const diff = end - now;
+    
+    if (diff < 0) return "Closed";
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+  };
+
   return (
     <div className="p-8 bg-black min-h-screen">
       {/* Header */}
@@ -161,41 +210,76 @@ const AvailableTenders = () => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Title</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Category</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Budget</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Lowest Bid</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Bids</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Deadline</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-white">Time Left</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-white">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {filteredTenders.map((tender) => (
-                  <tr key={tender.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4 text-white font-medium">{tender.title || "N/A"}</td>
-                    <td className="px-6 py-4 text-white/80">{tender.category || "N/A"}</td>
-                    <td className="px-6 py-4 text-white">{formatCurrency(tender.estimated_budget)}</td>
-                    <td className="px-6 py-4 text-white">{tender.bidCount || 0}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          tender.status
-                        )}`}
-                      >
-                        {formatStatus(tender.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-white/80">
-                      {formatDate(tender.bid_end_date || tender.closing_date)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => navigate(`/dashboard/contractor/submit-bid/${tender.id}`)}
-                        className="px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Submit Bid
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredTenders.map((tender) => {
+                  const timeLeft = getTimeRemaining(tender.bid_end_date || tender.closing_date);
+                  const isClosingSoon = timeLeft !== "Closed" && timeLeft !== "N/A" && !timeLeft.includes("d");
+                  const lowestBid = lowestBids[tender.id];
+                  
+                  return (
+                    <tr key={tender.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{tender.title || "N/A"}</span>
+                          {isClosingSoon && (
+                            <span className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full font-medium">
+                              ⏰ Closing Soon
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-white/80">{tender.category || "N/A"}</td>
+                      <td className="px-6 py-4 text-white">{formatCurrency(tender.estimated_budget)}</td>
+                      <td className="px-6 py-4">
+                        {lowestBid ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-emerald-300 font-semibold">
+                              {parseFloat(lowestBid.amount).toFixed(4)} ETH
+                            </span>
+                            <span className="text-xs text-emerald-400">🏆</span>
+                          </div>
+                        ) : (
+                          <span className="text-white/40 text-sm">No bids yet</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-white">{tender.bidCount || 0}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            tender.status
+                          )}`}
+                        >
+                          {formatStatus(tender.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-medium ${
+                          timeLeft === "Closed" ? "text-red-400" :
+                          isClosingSoon ? "text-yellow-300" :
+                          "text-white/80"
+                        }`}>
+                          {timeLeft}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => navigate(`/dashboard/contractor/submit-bid/${tender.id}`)}
+                          disabled={tender.status !== "open"}
+                          className="px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {tender.status === "open" ? "Submit Bid" : "View Details"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

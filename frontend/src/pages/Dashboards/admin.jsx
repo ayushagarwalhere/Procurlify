@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../hooks/useWallet";
 import { supabase } from "../../lib/supabase";
+import { useContract } from "../../hooks/useContract";
+import { ethers } from "ethers";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -18,6 +20,9 @@ const AdminDashboard = () => {
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tendersReadyToClose, setTendersReadyToClose] = useState([]);
+  
+  const { canCloseTender, getLowestBid, isInitialized } = useContract();
 
   useEffect(() => {
     const fetchTenders = async () => {
@@ -62,6 +67,39 @@ const AdminDashboard = () => {
     fetchTenders();
   }, []);
 
+  // Check which tenders are ready to close
+  useEffect(() => {
+    const checkTendersStatus = async () => {
+      if (!isInitialized || tenders.length === 0) return;
+
+      const readyTenders = [];
+      
+      for (const tender of tenders) {
+        if (tender.blockchain_tender_id && tender.status === "open") {
+          try {
+            const closeStatus = await canCloseTender(tender.blockchain_tender_id);
+            if (closeStatus.canClose) {
+              const lowestBid = await getLowestBid(tender.blockchain_tender_id);
+              readyTenders.push({
+                ...tender,
+                lowestBidAmount: lowestBid.lowestBidId > 0 
+                  ? ethers.formatEther(lowestBid.lowestBidAmount) 
+                  : null,
+                lowestBidContractor: lowestBid.contractor
+              });
+            }
+          } catch (error) {
+            console.error(`Error checking tender ${tender.id}:`, error);
+          }
+        }
+      }
+      
+      setTendersReadyToClose(readyTenders);
+    };
+
+    checkTendersStatus();
+  }, [isInitialized, tenders, canCloseTender, getLowestBid]);
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -99,6 +137,40 @@ const AdminDashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* Ready to Close Alert */}
+        {tendersReadyToClose.length > 0 && (
+          <div className="mb-8 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">🔔</span>
+              <div>
+                <h3 className="text-xl font-bold text-emerald-300">Tenders Ready to Close</h3>
+                <p className="text-white/60 text-sm">{tendersReadyToClose.length} tender(s) past deadline and ready for award</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {tendersReadyToClose.map((tender) => (
+                <div key={tender.id} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-white mb-1">{tender.title}</h4>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-white/60">Lowest Bid: <span className="text-emerald-300 font-semibold">{tender.lowestBidAmount ? `${parseFloat(tender.lowestBidAmount).toFixed(4)} ETH` : 'N/A'}</span></span>
+                        <span className="text-white/60">Budget: ₹{tender.estimated_budget}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/tender/${tender.id}`)}
+                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
+                    >
+                      Close & Award
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-4 mb-8">
