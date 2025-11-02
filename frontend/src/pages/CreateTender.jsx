@@ -127,7 +127,7 @@ const CreateTender = () => {
         closing_date: new Date(bidEndTimestamp).toISOString(),
         opening_date: new Date(bidStartTimestamp).toISOString(), // For backward compatibility
         created_by: userId, // Use the valid user ID
-        status: 'draft',
+        status: 'open',
         is_allotted: false,
         blockchain_tx_hash: blockchainReceipt.hash,
         blockchain_tender_id: tenderId
